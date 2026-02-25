@@ -47,27 +47,35 @@ export const epreuvesAPI = {
   },
 
   downloadEpreuve: async (id: number): Promise<void> => {
-    const response = await apiClient.get(`/epreuves/${id}/download/`, {
-      responseType: 'blob',
-    })
-    
-    // Créer un lien de téléchargement
-    const url = window.URL.createObjectURL(new Blob([response.data]))
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', `epreuve_${id}.pdf`)
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    window.URL.revokeObjectURL(url)
+    // Ouvrir le lien de téléchargement dans un nouvel onglet
+    // (gère la redirection Cloudinary automatiquement)
+    const token = localStorage.getItem('access_token')
+    try {
+      const response = await apiClient.get(`/epreuves/${id}/download/`, {
+        maxRedirects: 0,
+        validateStatus: (status: number) => status >= 200 && status < 400,
+      })
+      // Si redirection (302), ouvrir l'URL Cloudinary directement
+      if (response.status >= 300 && response.headers?.location) {
+        window.open(response.headers.location, '_blank')
+      }
+    } catch (error: any) {
+      // Axios traite les redirections automatiquement dans le navigateur
+      // Fallback : ouvrir directement en ajoutant le token
+      const downloadUrl = `/api/epreuves/${id}/download/`
+      const link = document.createElement('a')
+      link.href = downloadUrl
+      link.target = '_blank'
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+    }
   },
 
   previewEpreuve: async (id: number): Promise<string> => {
-    // Utiliser le même endpoint que download mais retourner l'URL blob pour preview
-    const response = await apiClient.get(`/epreuves/${id}/download/`, {
-      responseType: 'blob',
-    })
-    return window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
+    // Récupérer l'URL du PDF pour le viewer
+    const response = await apiClient.get(`/epreuves/${id}/`)
+    return response.data.preview_url || response.data.fichier_url || ''
   },
 
   recordView: async (id: number): Promise<void> => {

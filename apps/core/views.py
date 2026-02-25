@@ -69,12 +69,17 @@ class EpreuveViewSet(viewsets.ModelViewSet):
         
         user = self.request.user
         if not user.is_staff:
-            # Permettre de voir :
-            # 1. Les épreuves du même niveau ou inférieur
-            # 2. Les épreuves uploadées par l'utilisateur (peu importe le niveau)
+            # Définir la hiérarchie des niveaux pour un filtrage correct
+            niveau_order = ['L1', 'L2', 'L3', 'M1', 'M2']
+            user_niveau = user.niveau
+            if user_niveau and user_niveau in niveau_order:
+                idx = niveau_order.index(user_niveau)
+                allowed_niveaux = niveau_order[:idx + 1]
+            else:
+                # Pas de niveau défini → tout voir
+                allowed_niveaux = niveau_order
             queryset = queryset.filter(
-                Q(niveau=user.niveau) | 
-                Q(niveau__lt=user.niveau) |
+                Q(niveau__in=allowed_niveaux) |
                 Q(uploaded_by=user)
             )
         
@@ -268,7 +273,10 @@ def upload_epreuve(request):
     )
     
     if serializer.is_valid():
-        epreuve = serializer.save()
+        epreuve = serializer.save(
+            uploaded_by=request.user,
+            is_approved=True,  # Approuvé automatiquement
+        )
         
         # Retourner les détails complets de l'épreuve créée
         detail_serializer = EpreuveDetailSerializer(

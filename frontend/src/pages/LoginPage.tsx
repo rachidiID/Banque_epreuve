@@ -108,10 +108,6 @@ const LoginPage = () => {
           </div>
         </div>
 
-        {/* Quick test credentials hint */}
-        <div className="mt-4 p-3 bg-primary-50 rounded-xl text-center text-xs text-primary-600">
-          <strong>Test rapide :</strong> admin / admin123456
-        </div>
       </div>
     </div>
   )
