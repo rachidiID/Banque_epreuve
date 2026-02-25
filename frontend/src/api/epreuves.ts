@@ -47,28 +47,32 @@ export const epreuvesAPI = {
   },
 
   downloadEpreuve: async (id: number): Promise<void> => {
-    // Ouvrir le lien de téléchargement dans un nouvel onglet
-    // (gère la redirection Cloudinary automatiquement)
-    const token = localStorage.getItem('access_token')
     try {
-      const response = await apiClient.get(`/epreuves/${id}/download/`, {
-        maxRedirects: 0,
-        validateStatus: (status: number) => status >= 200 && status < 400,
-      })
-      // Si redirection (302), ouvrir l'URL Cloudinary directement
-      if (response.status >= 300 && response.headers?.location) {
-        window.open(response.headers.location, '_blank')
+      // Appel authentifié à l'endpoint download (retourne JSON avec l'URL)
+      const response = await apiClient.get(`/epreuves/${id}/download/`)
+      const data = response.data
+      
+      if (data.url) {
+        // URL Cloudinary : ouvrir directement dans un nouvel onglet
+        window.open(data.url, '_blank')
+      } else {
+        // Réponse non-JSON (fichier local servi directement) — fallback blob
+        throw new Error('local-file')
       }
     } catch (error: any) {
-      // Axios traite les redirections automatiquement dans le navigateur
-      // Fallback : ouvrir directement en ajoutant le token
-      const downloadUrl = `/api/epreuves/${id}/download/`
-      const link = document.createElement('a')
-      link.href = downloadUrl
-      link.target = '_blank'
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
+      // Fallback : utiliser les données détail de l'épreuve
+      try {
+        const response = await apiClient.get(`/epreuves/${id}/`)
+        const fileUrl = response.data.fichier_url || response.data.preview_url
+        if (fileUrl && fileUrl.startsWith('http')) {
+          window.open(fileUrl, '_blank')
+          return
+        }
+      } catch (e) {
+        // ignore
+      }
+      console.error('Erreur téléchargement:', error)
+      throw error
     }
   },
 

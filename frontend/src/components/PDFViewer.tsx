@@ -18,6 +18,25 @@ const PDFViewer = ({ url, onDownload, filename = 'document.pdf' }: PDFViewerProp
   const [pageNumber, setPageNumber] = useState<number>(1)
   const [scale, setScale] = useState<number>(1.0)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [loadError, setLoadError] = useState(false)
+
+  // Construire la source du PDF : URL directe (Cloudinary) ou avec auth headers
+  const pdfSource = (() => {
+    if (!url) return ''
+    // URL absolue (Cloudinary) → utiliser directement
+    if (url.startsWith('http')) {
+      return url
+    }
+    // URL relative (endpoint API) → ajouter les headers d'auth
+    const token = localStorage.getItem('access_token')
+    if (token) {
+      return {
+        url: url,
+        httpHeaders: { 'Authorization': `Bearer ${token}` },
+      }
+    }
+    return url
+  })()
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages)
@@ -118,8 +137,12 @@ const PDFViewer = ({ url, onDownload, filename = 'document.pdf' }: PDFViewerProp
       <div className="bg-white rounded-lg shadow-lg overflow-auto" style={{ maxHeight: '70vh' }}>
         <div className="flex justify-center p-4">
           <Document
-            file={url}
+            file={pdfSource}
             onLoadSuccess={onDocumentLoadSuccess}
+            onLoadError={(error) => {
+              console.error('PDF load error:', error)
+              setLoadError(true)
+            }}
             loading={
               <div className="flex flex-col items-center justify-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-600 border-t-transparent"></div>
@@ -129,7 +152,18 @@ const PDFViewer = ({ url, onDownload, filename = 'document.pdf' }: PDFViewerProp
             error={
               <div className="text-center py-12">
                 <p className="text-red-600 font-medium mb-2">Erreur de chargement du PDF</p>
-                <p className="text-sm text-gray-600">Impossible de charger le document</p>
+                <p className="text-sm text-gray-600 mb-4">Impossible de charger le document dans le navigateur</p>
+                {url && (
+                  <a
+                    href={typeof pdfSource === 'string' ? pdfSource : url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700 transition-colors text-sm font-medium"
+                  >
+                    <FaDownload />
+                    Ouvrir le PDF directement
+                  </a>
+                )}
               </div>
             }
           >

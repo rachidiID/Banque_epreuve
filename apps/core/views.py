@@ -100,12 +100,15 @@ class EpreuveViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
     def download(self, request, pk=None):
-        """Télécharger le fichier PDF d'une épreuve"""
+        """Retourne l'URL de téléchargement du fichier PDF"""
         epreuve = self.get_object()
         
         # Vérifier si le fichier existe
         if not epreuve.fichier_pdf:
-            raise Http404("Aucun fichier PDF disponible pour cette épreuve")
+            return Response(
+                {'error': 'Aucun fichier PDF disponible pour cette épreuve'},
+                status=status.HTTP_404_NOT_FOUND
+            )
         
         # Incrémenter le compteur de téléchargements
         epreuve.increment_telechargements()
@@ -117,14 +120,16 @@ class EpreuveViewSet(viewsets.ModelViewSet):
             action_type='DOWNLOAD'
         )
         
-        # Retourner le fichier : redirection si Cloudinary, sinon fichier local
+        # Retourner l'URL du fichier en JSON
         try:
             file_url = epreuve.fichier_pdf.url
-            # Si l'URL est externe (Cloudinary), rediriger
+            # Si l'URL est externe (Cloudinary), retourner l'URL directe
             if file_url.startswith('http'):
-                from django.shortcuts import redirect
-                return redirect(file_url)
-            # Sinon, servir le fichier local
+                return Response({
+                    'url': file_url,
+                    'filename': epreuve.fichier_pdf.name.split('/')[-1],
+                })
+            # Sinon, servir le fichier local directement
             file_path = epreuve.fichier_pdf.path
             content_type, _ = mimetypes.guess_type(file_path)
             response = FileResponse(
