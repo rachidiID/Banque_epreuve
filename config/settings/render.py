@@ -37,11 +37,35 @@ SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 
 # ── WhiteNoise pour fichiers statiques ──────────────────
 MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
-STORAGES = {
-    "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-    },
-}
+
+# ── Storage : Cloudinary pour les PDFs si configuré, sinon FileSystem ──
+_CLOUDINARY_NAME = os.environ.get('CLOUDINARY_CLOUD_NAME', '')
+if _CLOUDINARY_NAME:
+    # Cloudinary configuré → fichiers persistants (gratuit 25 Go)
+    INSTALLED_APPS += ['cloudinary_storage', 'cloudinary']
+    CLOUDINARY_STORAGE = {
+        'CLOUD_NAME': _CLOUDINARY_NAME,
+        'API_KEY': os.environ.get('CLOUDINARY_API_KEY', ''),
+        'API_SECRET': os.environ.get('CLOUDINARY_API_SECRET', ''),
+    }
+    STORAGES = {
+        "default": {
+            "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
+else:
+    # Pas de Cloudinary → fichiers locaux (éphémères sur Render free tier)
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'

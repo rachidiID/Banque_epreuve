@@ -7,6 +7,7 @@ import toast from 'react-hot-toast'
 import {
   FaDatabase, FaUsers, FaBook, FaChartBar, FaSync,
   FaCommentAlt, FaStar, FaCog, FaRocket,
+  FaDownload, FaCloudDownloadAlt, FaFileCsv,
 } from 'react-icons/fa'
 
 interface DashboardStats {
@@ -44,6 +45,7 @@ const AdminPage = () => {
   const { user } = useAuth()
   const navigate = useNavigate()
   const [isGenerating, setIsGenerating] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
   const [generateConfig, setGenerateConfig] = useState({
     users: 30,
     epreuves: 25,
@@ -78,6 +80,29 @@ const AdminPage = () => {
       toast.error(error.response?.data?.error || 'Erreur lors de la génération')
     } finally {
       setIsGenerating(false)
+    }
+  }
+
+  const handleExport = async (format: 'json' | 'csv') => {
+    setIsExporting(true)
+    try {
+      const response = await apiClient.get(`/admin/export-data/?format=${format}`, {
+        responseType: 'blob',
+      })
+      const blob = new Blob([response.data])
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = format === 'json' ? 'banque_epreuves_export.json' : 'banque_epreuves_export.zip'
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+      toast.success(`Export ${format.toUpperCase()} téléchargé !`)
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || "Erreur lors de l'export")
+    } finally {
+      setIsExporting(false)
     }
   }
 
@@ -199,6 +224,43 @@ const AdminPage = () => {
 
       {/* Charts / Breakdowns */}
       <div className="grid md:grid-cols-2 gap-6">
+        {/* Export des données */}
+        <div className="card border-2 border-dashed border-green-200 bg-green-50/50">
+          <div className="flex items-start space-x-4">
+            <div className="w-12 h-12 bg-green-600 rounded-xl flex items-center justify-center flex-shrink-0">
+              <FaCloudDownloadAlt className="text-white text-lg" />
+            </div>
+            <div className="flex-1">
+              <h2 className="text-xl font-bold text-gray-800 mb-1">Exporter les données</h2>
+              <p className="text-gray-500 text-sm mb-4">
+                Téléchargez toutes les données (utilisateurs, épreuves, interactions, évaluations)
+                pour entraîner le modèle ML en local.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={() => handleExport('json')}
+                  disabled={isExporting}
+                  className="btn-success flex items-center space-x-2 disabled:opacity-50"
+                >
+                  <FaDownload />
+                  <span>{isExporting ? 'Export...' : 'Export JSON'}</span>
+                </button>
+                <button
+                  onClick={() => handleExport('csv')}
+                  disabled={isExporting}
+                  className="btn-accent flex items-center space-x-2 disabled:opacity-50"
+                >
+                  <FaFileCsv />
+                  <span>{isExporting ? 'Export...' : 'Export CSV (ZIP)'}</span>
+                </button>
+              </div>
+              <p className="text-xs text-gray-400 mt-3">
+                💡 En local : <code className="bg-gray-100 px-1 rounded">python manage.py import_data banque_epreuves_export.json</code>
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Épreuves par matière */}
         <div className="card">
           <h3 className="font-bold text-lg mb-4 flex items-center space-x-2">

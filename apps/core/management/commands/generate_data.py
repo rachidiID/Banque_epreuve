@@ -103,7 +103,8 @@ class Command(BaseCommand):
                 type_epreuve=type_epreuve,
                 annee_academique=random.choice(annees),
                 professeur=random.choice(professeurs),
-                fichier_pdf=f'/epreuves/{filiere.lower()}/{niveau.lower()}/{matiere.lower().replace(" ", "_")}_{i+1}.pdf',
+                # Pas de fichier PDF pour les données synthétiques
+                # (évite les erreurs de storage sur Render)
                 description=f'Epreuve de {matiere} pour le niveau {niveau}. Annee {random.choice(annees)}.'
             )
             epreuves.append(epreuve)

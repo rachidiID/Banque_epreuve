@@ -1,4 +1,7 @@
 import random
+import json
+import csv
+import io
 
 from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action, api_view, permission_classes, parser_classes
@@ -7,8 +10,9 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Q, Count
-from django.http import FileResponse, Http404
+from django.http import FileResponse, Http404, HttpResponse
 from django.contrib.auth import get_user_model
+from django.core.serializers.json import DjangoJSONEncoder
 import mimetypes
 
 from .models import Epreuve, Interaction, Evaluation, Commentaire
@@ -546,3 +550,130 @@ def dashboard_stats(request):
         )
 
     return Response(stats)
+
+
+# ────────────────────────────────────────────────────────
+# Export des données (admin seulement)
+# ────────────────────────────────────────────────────────
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def export_data_api(request):
+    """
+    GET /api/admin/export-data/?format=json|csv
+    Exporte toutes les données de la BDD pour récupération locale
+    et entraînement du modèle ML. Admin seulement.
+    """
+    if not request.user.is_staff:
+        return Response({'error': 'Accès réservé aux administrateurs'}, status=status.HTTP_403_FORBIDDEN)
+
+    fmt = request.query_params.get('format', 'json')
+
+    if fmt == 'csv':
+        return _export_csv_response()
+    else:
+        return _export_json_response()
+
+
+def _export_json_response():
+    """Exporte toutes les données en JSON."""
+    User = get_user_model()
+
+    data = {
+        'export_info': {
+            'version': '1.0',
+            'tables': ['utilisateurs', 'epreuves', 'interactions', 'evaluations', 'commentaires'],
+        },
+        'utilisateurs': list(User.objects.values(
+            'id', 'username', 'email', 'first_name', 'last_name',
+            'niveau', 'filiere', 'date_joined', 'is_staff', 'is_active'
+        )),
+        'epreuves': list(Epreuve.objects.values(
+            'id', 'titre', 'matiere', 'niveau', 'type_epreuve',
+            'annee_academique', 'professeur', 'description',
+            'fichier_pdf', 'taille_fichier', 'nb_pages',
+            'nb_vues', 'nb_telechargements',
+            'note_moyenne_difficulte', 'note_moyenne_pertinence',
+            'is_approved', 'created_at', 'updated_at'
+        )),
+        'interactions': list(Interaction.objects.values(
+            'id', 'user_id', 'epreuve_id',
+            'action_type', 'session_duration', 'timestamp'
+        )),
+        'evaluations': list(Evaluation.objects.values(
+            'id', 'user_id', 'epreuve_id',
+            'note_difficulte', 'note_pertinence', 'created_at'
+        )),
+        'commentaires': list(Commentaire.objects.values(
+            'id', 'user_id', 'epreuve_id', 'contenu', 'created_at'
+        )),
+    }
+
+    response = HttpResponse(
+        json.dumps(data, ensure_ascii=False, indent=2, cls=DjangoJSONEncoder),
+        content_type='application/json'
+    )
+    response['Content-Disposition'] = 'attachment; filename="banque_epreuves_export.json"'
+    return response
+
+
+def _export_csv_response():
+    """Exporte les données en CSV dans un ZIP."""
+    import zipfile
+
+    User = get_user_model()
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+        # Interactions CSV
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['user_id', 'epreuve_id', 'action_type', 'session_duration', 'timestamp'])
+        for row in Interaction.objects.values_list(
+            'user_id', 'epreuve_id', 'action_type', 'session_duration', 'timestamp'
+        ):
+            writer.writerow(row)
+        zf.writestr('interactions.csv', output.getvalue())
+
+        # Évaluations CSV
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['user_id', 'epreuve_id', 'note_difficulte', 'note_pertinence', 'timestamp'])
+        for row in Evaluation.objects.values_list(
+            'user_id', 'epreuve_id', 'note_difficulte', 'note_pertinence', 'created_at'
+        ):
+            writer.writerow(row)
+        zf.writestr('evaluations.csv', output.getvalue())
+
+        # Épreuves CSV
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['id', 'titre', 'matiere', 'niveau', 'type_epreuve', 'annee_academique',
+                         'professeur', 'nb_vues', 'nb_telechargements',
+                         'note_moyenne_difficulte', 'note_moyenne_pertinence'])
+        for row in Epreuve.objects.values_list(
+            'id', 'titre', 'matiere', 'niveau', 'type_epreuve', 'annee_academique',
+            'professeur', 'nb_vues', 'nb_telechargements',
+            'note_moyenne_difficulte', 'note_moyenne_pertinence'
+        ):
+            writer.writerow(row)
+        zf.writestr('epreuves.csv', output.getvalue())
+
+        # Utilisateurs CSV
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['id', 'username', 'niveau', 'filiere', 'date_joined'])
+        for row in User.objects.values_list('id', 'username', 'niveau', 'filiere', 'date_joined'):
+            writer.writerow(row)
+        zf.writestr('utilisateurs.csv', output.getvalue())
+
+        # Commentaires CSV
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['user_id', 'epreuve_id', 'contenu', 'created_at'])
+        for row in Commentaire.objects.values_list('user_id', 'epreuve_id', 'contenu', 'created_at'):
+            writer.writerow(row)
+        zf.writestr('commentaires.csv', output.getvalue())
+
+    buffer.seek(0)
+    response = HttpResponse(buffer.read(), content_type='application/zip')
+    response['Content-Disposition'] = 'attachment; filename="banque_epreuves_export.zip"'
+    return response
