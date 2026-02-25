@@ -88,9 +88,17 @@ class EpreuveDetailSerializer(serializers.ModelSerializer):
     @extend_schema_field(serializers.CharField)
     def get_fichier_url(self, obj):
         if obj.fichier_pdf:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.fichier_pdf.url)
+            try:
+                url = obj.fichier_pdf.url
+                # URL Cloudinary : déjà absolue
+                if url.startswith('http'):
+                    return url
+                # URL locale : construire l'URL absolue
+                request = self.context.get('request')
+                if request:
+                    return request.build_absolute_uri(url)
+            except Exception:
+                pass
         return None
     
     @extend_schema_field(serializers.CharField)
@@ -102,6 +110,16 @@ class EpreuveDetailSerializer(serializers.ModelSerializer):
     
     @extend_schema_field(serializers.CharField)
     def get_preview_url(self, obj):
+        """Retourne l'URL directe du PDF pour le viewer."""
+        if obj.fichier_pdf:
+            try:
+                url = obj.fichier_pdf.url
+                # URL Cloudinary : retourner directement (pas besoin d'auth)
+                if url.startswith('http'):
+                    return url
+            except Exception:
+                pass
+        # Fallback : passer par l'API de téléchargement
         request = self.context.get('request')
         if request:
             return request.build_absolute_uri(f'/api/epreuves/{obj.id}/download/')

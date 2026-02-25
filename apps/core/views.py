@@ -112,8 +112,14 @@ class EpreuveViewSet(viewsets.ModelViewSet):
             action_type='DOWNLOAD'
         )
         
-        # Retourner le fichier
+        # Retourner le fichier : redirection si Cloudinary, sinon fichier local
         try:
+            file_url = epreuve.fichier_pdf.url
+            # Si l'URL est externe (Cloudinary), rediriger
+            if file_url.startswith('http'):
+                from django.shortcuts import redirect
+                return redirect(file_url)
+            # Sinon, servir le fichier local
             file_path = epreuve.fichier_pdf.path
             content_type, _ = mimetypes.guess_type(file_path)
             response = FileResponse(
