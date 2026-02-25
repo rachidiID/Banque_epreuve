@@ -38,6 +38,12 @@ ml_models/*.pkl
 ml_models/*.h5
 !ml_models/.gitkeep
 
+# Dossiers ML/Recommender (ignorés pour PythonAnywhere)
+ml_models/
+data/raw/
+data/processed/
+data/synthetic/
+
 # Data
 data/raw/*.csv
 data/processed/*.csv
