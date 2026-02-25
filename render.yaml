@@ -1,0 +1,28 @@
+databases:
+  - name: banque-epreuves-db
+    plan: free
+    databaseName: banque_epreuves
+    user: banque_epreuves_user
+
+services:
+  - type: web
+    name: banque-epreuves-api
+    runtime: python
+    plan: free
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn config.wsgi:application --bind 0.0.0.0:$PORT"
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.settings.render
+      - key: DATABASE_URL
+        fromDatabase:
+          name: banque-epreuves-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALLOWED_HOSTS
+        value: .onrender.com
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: PYTHON_VERSION
+        value: "3.11.11"

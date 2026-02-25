@@ -1,0 +1,87 @@
+"""
+Settings pour Render.com — PostgreSQL gratuit, sans ML/recommender.
+"""
+import os
+from .base import *
+import dj_database_url
+
+DEBUG = False
+
+# ── Hosts ───────────────────────────────────────────────
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['.onrender.com'])
+
+# ── Retirer le module recommender ───────────────────────
+INSTALLED_APPS = [app for app in INSTALLED_APPS if app != 'apps.recommender']
+
+# ── URLs sans recommender ───────────────────────────────
+ROOT_URLCONF = 'config.urls_pythonanywhere'
+
+# ── Database PostgreSQL (fournie par Render) ────────────
+DATABASES = {
+    'default': dj_database_url.config(
+        default=os.environ.get('DATABASE_URL', ''),
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
+}
+
+# ── Cache mémoire (pas de Redis) ───────────────────────
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+    }
+}
+
+# ── Sessions en BDD ────────────────────────────────────
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+
+# ── WhiteNoise pour fichiers statiques ──────────────────
+MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
+STORAGES = {
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
+
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# ── CORS ────────────────────────────────────────────────
+CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=[])
+# Permettre les credentials (cookies, auth headers)
+CORS_ALLOW_CREDENTIALS = True
+
+# ── Sécurité ────────────────────────────────────────────
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+# Ne pas forcer la redirection SSL — Render s'en charge
+SECURE_SSL_REDIRECT = False
+
+# ── Logging ─────────────────────────────────────────────
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'WARNING',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+    },
+}
