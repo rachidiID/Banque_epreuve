@@ -2,6 +2,9 @@
 # Script de build pour Render.com
 set -o errexit
 
+# Forcer les settings Render
+export DJANGO_SETTINGS_MODULE=config.settings.render
+
 echo "==> Installation des dépendances..."
 pip install --upgrade pip
 pip install -r requirements/render.txt
