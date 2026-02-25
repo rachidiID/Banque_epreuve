@@ -1,0 +1,21 @@
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import (
+    UserViewSet, EpreuveViewSet, InteractionViewSet,
+    EvaluationViewSet, CommentaireViewSet,
+    upload_epreuve, record_view
+)
+
+router = DefaultRouter()
+router.register(r'users', UserViewSet, basename='user')
+router.register(r'epreuves', EpreuveViewSet, basename='epreuve')
+router.register(r'interactions', InteractionViewSet, basename='interaction')
+router.register(r'evaluations', EvaluationViewSet, basename='evaluation')
+router.register(r'commentaires', CommentaireViewSet, basename='commentaire')
+
+# Les URLs spécifiques DOIVENT être avant le router pour éviter les conflits
+urlpatterns = [
+    path('epreuves/upload/', upload_epreuve, name='epreuve-upload'),
+    path('epreuves/<int:pk>/view/', record_view, name='epreuve-record-view'),
+    path('', include(router.urls)),
+]
