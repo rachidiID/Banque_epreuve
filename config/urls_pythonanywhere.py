@@ -1,10 +1,12 @@
 """
-URLs pour PythonAnywhere — sans le module recommender.
+URLs pour déploiement (Render / PythonAnywhere) — sans le module recommender.
+Sert le frontend React + l'API + l'admin.
 """
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
 from django.conf import settings
 from django.conf.urls.static import static
+from django.views.generic import TemplateView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
@@ -24,6 +26,13 @@ urlpatterns = [
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
 ]
 
-# Servir les fichiers média (PythonAnywhere sert les statiques via sa config web)
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+# Frontend React : toutes les routes non-API servent index.html
+# React Router gère le routing côté client
+urlpatterns += [
+    re_path(r'^(?!admin|api|static|media).*$',
+            TemplateView.as_view(template_name='index.html'),
+            name='frontend'),
+]

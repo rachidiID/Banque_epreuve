@@ -8,7 +8,7 @@ import dj_database_url
 DEBUG = False
 
 # ── Hosts ───────────────────────────────────────────────
-ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['.onrender.com'])
+ALLOWED_HOSTS = ['*']
 
 # ── Retirer le module recommender ───────────────────────
 INSTALLED_APPS = [app for app in INSTALLED_APPS if app != 'apps.recommender']
@@ -45,6 +45,16 @@ STORAGES = {
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# Inclure le dossier frontend buildé dans les fichiers statiques
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',
+]
+
+# Templates : chercher index.html du frontend
+TEMPLATES[0]['DIRS'] = [
+    BASE_DIR / 'static' / 'frontend',
+]
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
