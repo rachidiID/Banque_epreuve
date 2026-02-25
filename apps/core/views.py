@@ -1,11 +1,14 @@
+import random
+
 from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action, api_view, permission_classes, parser_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django_filters.rest_framework import DjangoFilterBackend
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.http import FileResponse, Http404
+from django.contrib.auth import get_user_model
 import mimetypes
 
 from .models import Epreuve, Interaction, Evaluation, Commentaire
@@ -306,3 +309,240 @@ def record_view(request, pk):
             {'error': 'Épreuve non trouvée'},
             status=status.HTTP_404_NOT_FOUND
         )
+
+
+# ────────────────────────────────────────────────────────
+# Inscription publique
+# ────────────────────────────────────────────────────────
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def register_user(request):
+    """
+    POST /api/auth/register/
+    Crée un nouveau compte utilisateur (public, sans authentification).
+    """
+    serializer = UserCreateSerializer(data=request.data)
+    if serializer.is_valid():
+        user = serializer.save()
+        return Response({
+            'message': 'Compte créé avec succès',
+            'user': UserSerializer(user).data,
+        }, status=status.HTTP_201_CREATED)
+    return Response({
+        'error': "Erreur lors de l'inscription",
+        'details': serializer.errors,
+    }, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ────────────────────────────────────────────────────────
+# Génération de données (admin seulement)
+# ────────────────────────────────────────────────────────
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def generate_sample_data(request):
+    """
+    POST /api/admin/generate-data/
+    Génère des données synthétiques. Réservé aux admin (is_staff).
+    Body optionnel : { "users": 50, "epreuves": 40, "interactions": 2000 }
+    """
+    if not request.user.is_staff:
+        return Response({'error': 'Accès réservé aux administrateurs'}, status=status.HTTP_403_FORBIDDEN)
+
+    User = get_user_model()
+    nb_users = int(request.data.get('users', 50))
+    nb_epreuves = int(request.data.get('epreuves', 40))
+    nb_interactions = int(request.data.get('interactions', 2000))
+
+    # Limites de sécurité
+    nb_users = min(nb_users, 500)
+    nb_epreuves = min(nb_epreuves, 300)
+    nb_interactions = min(nb_interactions, 50000)
+
+    from datetime import datetime, timedelta
+
+    niveaux = ['L1', 'L2', 'L3', 'M1', 'M2']
+    filieres = ['MATH', 'INFO', 'PHYSIQUE', 'CHIMIE']
+    types = ['PARTIEL', 'EXAMEN', 'TD', 'RATTRAPAGE', 'CC']
+    matieres_par_filiere = {
+        'MATH': ['Analyse', 'Algebre', 'Probabilites', 'Statistiques', 'Geometrie'],
+        'INFO': ['Algorithmes', 'Bases de donnees', 'Reseaux', 'IA', 'Programmation'],
+        'PHYSIQUE': ['Mecanique', 'Thermodynamique', 'Electromagnetisme', 'Optique'],
+        'CHIMIE': ['Chimie organique', 'Chimie minerale', 'Chimie analytique'],
+    }
+    professeurs = [
+        'Prof. ADJIBI', 'Prof. KOUTON', 'Prof. SOSSA', 'Prof. HOUNKONNOU',
+        'Prof. ATCHADE', 'Prof. AZONHIHO', 'Prof. DAKO', 'Prof. AKPLOGAN',
+        'Prof. VODOUNOU', 'Prof. DJOSSOU',
+    ]
+    annees = ['2020-2021', '2021-2022', '2022-2023', '2023-2024', '2024-2025']
+
+    # Créer les utilisateurs
+    created_users = []
+    existing_count = User.objects.filter(username__startswith='etudiant').count()
+    for i in range(nb_users):
+        idx = existing_count + i + 1
+        user, created = User.objects.get_or_create(
+            username=f'etudiant{idx}',
+            defaults={
+                'email': f'etudiant{idx}@imsp.bj',
+                'first_name': f'Prénom{idx}',
+                'last_name': f'Nom{idx}',
+                'niveau': random.choice(niveaux),
+                'filiere': random.choice(filieres),
+            }
+        )
+        if created:
+            user.set_password('password123')
+            user.save()
+        created_users.append(user)
+
+    # Créer les épreuves
+    created_epreuves = []
+    for i in range(nb_epreuves):
+        filiere = random.choice(list(matieres_par_filiere.keys()))
+        matiere = random.choice(matieres_par_filiere[filiere])
+        niveau = random.choice(niveaux)
+        type_epreuve = random.choice(types)
+        annee = random.choice(annees)
+        ep = Epreuve.objects.create(
+            titre=f'{type_epreuve} {matiere} {niveau} ({annee})',
+            matiere=matiere,
+            niveau=niveau,
+            type_epreuve=type_epreuve,
+            annee_academique=annee,
+            professeur=random.choice(professeurs),
+            description=f'Épreuve de {matiere} pour le niveau {niveau}, année {annee}. '
+                        f'Proposée par un professeur de la filière {filiere} à l\'IMSP.',
+        )
+        created_epreuves.append(ep)
+
+    # Créer les interactions
+    all_users = list(User.objects.filter(is_superuser=False))
+    all_epreuves = list(Epreuve.objects.all())
+    action_types = ['VIEW', 'DOWNLOAD', 'CLICK', 'RATE']
+    action_weights = [0.5, 0.25, 0.15, 0.1]
+
+    interactions_created = 0
+    for _ in range(nb_interactions):
+        if not all_users or not all_epreuves:
+            break
+        user = random.choice(all_users)
+        epreuve = random.choice(all_epreuves)
+        action_type = random.choices(action_types, weights=action_weights)[0]
+        timestamp = datetime.now() - timedelta(
+            days=random.randint(1, 180), hours=random.randint(0, 23),
+        )
+        session_duration = random.randint(10, 1800) if action_type == 'VIEW' else None
+        Interaction.objects.create(
+            user=user, epreuve=epreuve, action_type=action_type,
+            timestamp=timestamp, session_duration=session_duration,
+        )
+        if action_type == 'VIEW':
+            epreuve.increment_vues()
+        elif action_type == 'DOWNLOAD':
+            epreuve.increment_telechargements()
+        interactions_created += 1
+
+    # Créer quelques évaluations
+    evaluations_created = 0
+    for _ in range(int(nb_interactions * 0.1)):
+        if not all_users or not all_epreuves:
+            break
+        user = random.choice(all_users)
+        epreuve = random.choice(all_epreuves)
+        if not Evaluation.objects.filter(user=user, epreuve=epreuve).exists():
+            Evaluation.objects.create(
+                user=user, epreuve=epreuve,
+                note_difficulte=random.randint(1, 5),
+                note_pertinence=random.randint(1, 5),
+            )
+            evaluations_created += 1
+
+    # Créer quelques commentaires
+    commentaires_types = [
+        'Très bonne épreuve, bien structurée.',
+        'Difficile mais intéressante.',
+        'Manque de clarté dans certaines questions.',
+        'Excellente préparation pour les examens.',
+        'Questions pertinentes et bien formulées.',
+        'Bonne épreuve, je recommande.',
+        'Un peu trop facile pour le niveau.',
+        'Les exercices sont progressifs et bien pensés.',
+    ]
+    commentaires_created = 0
+    for _ in range(int(nb_interactions * 0.05)):
+        if not all_users or not all_epreuves:
+            break
+        user = random.choice(all_users)
+        epreuve = random.choice(all_epreuves)
+        Commentaire.objects.create(
+            user=user, epreuve=epreuve,
+            contenu=random.choice(commentaires_types),
+        )
+        commentaires_created += 1
+
+    return Response({
+        'message': 'Données générées avec succès',
+        'summary': {
+            'users_created': len(created_users),
+            'epreuves_created': len(created_epreuves),
+            'interactions_created': interactions_created,
+            'evaluations_created': evaluations_created,
+            'commentaires_created': commentaires_created,
+        },
+        'totals': {
+            'total_users': User.objects.count(),
+            'total_epreuves': Epreuve.objects.count(),
+            'total_interactions': Interaction.objects.count(),
+            'total_evaluations': Evaluation.objects.count(),
+            'total_commentaires': Commentaire.objects.count(),
+        },
+    }, status=status.HTTP_201_CREATED)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def dashboard_stats(request):
+    """
+    GET /api/admin/stats/
+    Statistiques globales pour le tableau de bord.
+    """
+    User = get_user_model()
+
+    stats = {
+        'total_users': User.objects.filter(is_superuser=False).count(),
+        'total_epreuves': Epreuve.objects.count(),
+        'total_interactions': Interaction.objects.count(),
+        'total_evaluations': Evaluation.objects.count(),
+        'total_commentaires': Commentaire.objects.count(),
+        'epreuves_par_matiere': list(
+            Epreuve.objects.values('matiere')
+            .annotate(count=Count('id'))
+            .order_by('-count')[:10]
+        ),
+        'epreuves_par_niveau': list(
+            Epreuve.objects.values('niveau')
+            .annotate(count=Count('id'))
+            .order_by('niveau')
+        ),
+        'top_epreuves': list(
+            Epreuve.objects.order_by('-nb_telechargements')[:5]
+            .values('id', 'titre', 'matiere', 'niveau', 'nb_telechargements', 'nb_vues')
+        ),
+    }
+
+    if request.user.is_staff:
+        stats['users_par_filiere'] = list(
+            User.objects.filter(is_superuser=False)
+            .values('filiere')
+            .annotate(count=Count('id'))
+            .order_by('-count')
+        )
+        stats['users_par_niveau'] = list(
+            User.objects.filter(is_superuser=False)
+            .values('niveau')
+            .annotate(count=Count('id'))
+            .order_by('niveau')
+        )
+
+    return Response(stats)

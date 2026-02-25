@@ -1,6 +1,6 @@
 """
-URLs pour déploiement (Render / PythonAnywhere) — sans le module recommender.
-Sert le frontend React + l'API + l'admin.
+URLs pour déploiement (Render / PythonAnywhere).
+Inclut le recommandeur léger (sans PyTorch), l'API core, l'admin et le frontend React.
 """
 from django.contrib import admin
 from django.urls import path, include, re_path
@@ -18,8 +18,11 @@ urlpatterns = [
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh_alt'),
 
-    # API endpoints (core uniquement)
+    # API endpoints (core)
     path('api/', include('apps.core.urls')),
+
+    # Recommandations (version légère, sans PyTorch)
+    path('api/recommendations/', include('apps.recommender.api.urls_lite')),
 
     # API Documentation
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
@@ -28,6 +31,9 @@ urlpatterns = [
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+# Servir les fichiers media en production aussi (pour les PDFs uploadés)
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 # Frontend React : toutes les routes non-API servent index.html
 # React Router gère le routing côté client

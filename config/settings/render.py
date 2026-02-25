@@ -1,5 +1,5 @@
 """
-Settings pour Render.com — PostgreSQL gratuit, sans ML/recommender.
+Settings pour Render.com — PostgreSQL gratuit, recommandeur léger (sans PyTorch).
 """
 import os
 from .base import *
@@ -10,10 +10,10 @@ DEBUG = False
 # ── Hosts ───────────────────────────────────────────────
 ALLOWED_HOSTS = ['*']
 
-# ── Retirer le module recommender ───────────────────────
-INSTALLED_APPS = [app for app in INSTALLED_APPS if app != 'apps.recommender']
+# ── Garder le module recommender (version légère sans PyTorch) ──
+# On ne retire plus apps.recommender — il utilise lite_predictor.py
 
-# ── URLs sans recommender ───────────────────────────────
+# ── URLs avec recommender léger ─────────────────────────
 ROOT_URLCONF = 'config.urls_pythonanywhere'
 
 # ── Database PostgreSQL (fournie par Render) ────────────

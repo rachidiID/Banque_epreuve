@@ -18,9 +18,10 @@ export const authAPI = {
   },
 
   register: async (data: RegisterData): Promise<AuthResponse> => {
-    const response = await apiClient.post<User>('/users/', data)
+    // Utiliser le nouvel endpoint public d'inscription
+    await apiClient.post('/auth/register/', data)
     
-    // Auto login after registration
+    // Auto-login après inscription
     const loginResponse = await authAPI.login({
       username: data.username,
       password: data.password
@@ -42,15 +43,6 @@ export const authAPI = {
   },
 
   logout: async (): Promise<void> => {
-    // No server-side logout needed for JWT
     return Promise.resolve()
-  },
-
-  requestPasswordReset: async (email: string): Promise<void> => {
-    await apiClient.post('/users/password-reset/', { email })
-  },
-
-  confirmPasswordReset: async (token: string, password: string): Promise<void> => {
-    await apiClient.post('/users/password-reset-confirm/', { token, password })
   },
 }

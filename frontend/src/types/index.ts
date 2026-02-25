@@ -8,6 +8,8 @@ export interface User {
   filiere?: string
   date_joined?: string
   date_inscription?: string
+  is_staff?: boolean
+  is_active?: boolean
 }
 
 export interface Epreuve {
@@ -80,9 +82,11 @@ export interface RegisterData {
   email: string
   username: string
   password: string
+  password_confirm: string
   first_name: string
   last_name: string
-  user_type: 'student' | 'teacher'
+  niveau?: string
+  filiere?: string
 }
 
 export interface AuthResponse {

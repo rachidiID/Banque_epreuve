@@ -2,26 +2,78 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
 @layer base {
   body {
-    @apply bg-gray-50 text-gray-900;
+    @apply bg-gray-50 text-gray-900 font-sans antialiased;
   }
 }
 
 @layer components {
   .btn-primary {
-    @apply bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors;
+    @apply bg-primary-600 text-white px-5 py-2.5 rounded-xl font-medium
+           hover:bg-primary-700 active:bg-primary-800
+           transition-all duration-200 shadow-sm hover:shadow-md;
   }
-  
+
   .btn-secondary {
-    @apply bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors;
+    @apply bg-white text-gray-700 px-5 py-2.5 rounded-xl font-medium
+           border border-gray-200 hover:bg-gray-50 hover:border-gray-300
+           transition-all duration-200;
   }
-  
+
+  .btn-accent {
+    @apply bg-accent-500 text-white px-5 py-2.5 rounded-xl font-medium
+           hover:bg-accent-600 active:bg-accent-700
+           transition-all duration-200 shadow-sm hover:shadow-md;
+  }
+
+  .btn-success {
+    @apply bg-success-500 text-white px-5 py-2.5 rounded-xl font-medium
+           hover:bg-success-600 active:bg-success-700
+           transition-all duration-200 shadow-sm hover:shadow-md;
+  }
+
+  .btn-danger {
+    @apply bg-red-500 text-white px-5 py-2.5 rounded-xl font-medium
+           hover:bg-red-600 active:bg-red-700
+           transition-all duration-200 shadow-sm hover:shadow-md;
+  }
+
   .input-field {
-    @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500;
+    @apply w-full px-4 py-2.5 border border-gray-200 rounded-xl
+           focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
+           bg-white transition-all duration-200
+           placeholder:text-gray-400;
   }
-  
+
   .card {
-    @apply bg-white rounded-lg shadow-md p-6;
+    @apply bg-white rounded-2xl shadow-soft p-6 border border-gray-100;
+  }
+
+  .card-hover {
+    @apply card hover:shadow-lg hover:border-primary-100 hover:-translate-y-0.5
+           transition-all duration-300 cursor-pointer;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-primary {
+    @apply badge bg-primary-100 text-primary-700;
+  }
+
+  .badge-accent {
+    @apply badge bg-accent-100 text-accent-700;
+  }
+
+  .badge-success {
+    @apply badge bg-success-100 text-success-700;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary-600 to-accent-500 bg-clip-text text-transparent;
   }
 }

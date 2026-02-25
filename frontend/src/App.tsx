@@ -6,10 +6,12 @@ import Layout from '@/components/Layout'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import HomePage from '@/pages/HomePage'
 import LoginPage from '@/pages/LoginPage'
+import RegisterPage from '@/pages/RegisterPage'
 import ProfilePage from '@/pages/ProfilePage'
 import EpreuvesListPage from '@/pages/EpreuvesListPage'
 import EpreuveDetailPage from '@/pages/EpreuveDetailPage'
 import UploadEpreuvePage from '@/pages/UploadEpreuvePage'
+import AdminPage from '@/pages/AdminPage'
 import TestPage from '@/pages/TestPage'
 
 const queryClient = new QueryClient({
@@ -31,6 +33,7 @@ function App() {
               <Route path="/test" element={<TestPage />} />
               <Route path="/" element={<HomePage />} />
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
               <Route path="/epreuves" element={<EpreuvesListPage />} />
               <Route 
                 path="/epreuves/:id" 
@@ -55,6 +58,14 @@ function App() {
                     <ProfilePage />
                   </ProtectedRoute>
                 } 
+              />
+              <Route
+                path="/admin-panel"
+                element={
+                  <ProtectedRoute>
+                    <AdminPage />
+                  </ProtectedRoute>
+                }
               />
             </Routes>
           </Layout>
