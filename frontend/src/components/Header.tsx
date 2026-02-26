@@ -92,7 +92,7 @@ const Header = () => {
                 className="block py-2.5 px-3 text-accent-600 font-medium hover:bg-accent-50 rounded-lg"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                📤 Upload une épreuve
+                Upload une épreuve
               </Link>
             )}
             {isAuthenticated && (user as any)?.is_staff && (
@@ -101,7 +101,7 @@ const Header = () => {
                 className="block py-2.5 px-3 text-gray-700 hover:text-primary-600 hover:bg-primary-50 rounded-lg font-medium"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                ⚙️ Panneau Admin
+                Panneau Admin
               </Link>
             )}
             {isAuthenticated ? (
