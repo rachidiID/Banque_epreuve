@@ -150,11 +150,11 @@ class EpreuveUploadSerializer(serializers.ModelSerializer):
         if not value.name.lower().endswith('.pdf'):
             raise serializers.ValidationError("Seuls les fichiers PDF sont acceptés")
         
-        # Vérifier la taille (10 MB max)
-        max_size = 10 * 1024 * 1024  # 10 MB
+        # Vérifier la taille (20 MB max)
+        max_size = 20 * 1024 * 1024  # 20 MB
         if value.size > max_size:
             raise serializers.ValidationError(
-                f"Le fichier ne doit pas dépasser 10 MB. Taille actuelle: {value.size / (1024*1024):.2f} MB"
+                f"Le fichier ne doit pas dépasser 20 MB. Taille actuelle: {value.size / (1024*1024):.2f} MB"
             )
         
         return value

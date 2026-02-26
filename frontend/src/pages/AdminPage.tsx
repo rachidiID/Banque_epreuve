@@ -1,13 +1,15 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import apiClient from '@/api/client'
 import toast from 'react-hot-toast'
+import type { Epreuve } from '@/types'
 import {
   FaDatabase, FaUsers, FaBook, FaChartBar, FaSync,
   FaCommentAlt, FaStar, FaCog, FaRocket,
   FaDownload, FaCloudDownloadAlt, FaFileCsv,
+  FaCheck, FaTimesCircle, FaExclamationTriangle,
 } from 'react-icons/fa'
 
 interface DashboardStats {
@@ -16,6 +18,7 @@ interface DashboardStats {
   total_interactions: number
   total_evaluations: number
   total_commentaires: number
+  pending_count: number
   epreuves_par_matiere: Array<{ matiere: string; count: number }>
   epreuves_par_niveau: Array<{ niveau: string; count: number }>
   top_epreuves: Array<{ id: number; titre: string; matiere: string; niveau: string; nb_telechargements: number; nb_vues: number }>
@@ -44,6 +47,7 @@ interface GenerateResult {
 const AdminPage = () => {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [isGenerating, setIsGenerating] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [generateConfig, setGenerateConfig] = useState({
@@ -65,6 +69,38 @@ const AdminPage = () => {
       return response.data
     },
   })
+
+  // Épreuves en attente de modération
+  const { data: pendingData, refetch: refetchPending, isLoading: pendingLoading } = useQuery<{ count: number; results: Epreuve[] }>({
+    queryKey: ['admin-pending'],
+    queryFn: async () => {
+      const response = await apiClient.get('/admin/pending/')
+      return response.data
+    },
+  })
+
+  const handleApprove = async (id: number) => {
+    try {
+      await apiClient.post(`/admin/epreuves/${id}/approve/`)
+      toast.success('Épreuve approuvée !')
+      refetchPending()
+      refetchStats()
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Erreur')
+    }
+  }
+
+  const handleReject = async (id: number) => {
+    if (!confirm('Êtes-vous sûr de vouloir rejeter et supprimer cette épreuve ?')) return
+    try {
+      await apiClient.post(`/admin/epreuves/${id}/reject/`)
+      toast.success('Épreuve rejetée et supprimée')
+      refetchPending()
+      refetchStats()
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Erreur')
+    }
+  }
 
   const handleGenerate = async () => {
     setIsGenerating(true)
@@ -133,13 +169,14 @@ const AdminPage = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
         {[
           { icon: FaUsers, label: 'Utilisateurs', value: stats?.total_users ?? '—', color: 'primary' },
           { icon: FaBook, label: 'Épreuves', value: stats?.total_epreuves ?? '—', color: 'accent' },
+          { icon: FaExclamationTriangle, label: 'En attente', value: stats?.pending_count ?? '—', color: 'yellow' },
           { icon: FaChartBar, label: 'Interactions', value: stats?.total_interactions ?? '—', color: 'indigo' },
-          { icon: FaStar, label: 'Évaluations', value: stats?.total_evaluations ?? '—', color: 'yellow' },
-          { icon: FaCommentAlt, label: 'Commentaires', value: stats?.total_commentaires ?? '—', color: 'green' },
+          { icon: FaStar, label: 'Évaluations', value: stats?.total_evaluations ?? '—', color: 'green' },
+          { icon: FaCommentAlt, label: 'Commentaires', value: stats?.total_commentaires ?? '—', color: 'purple' },
         ].map((stat, i) => (
           <div key={i} className="card text-center">
             <stat.icon className={`text-xl text-${stat.color}-500 mx-auto mb-2`} />
@@ -149,14 +186,98 @@ const AdminPage = () => {
         ))}
       </div>
 
+      {/* Modération Section */}
+      <div className="card border-2 border-yellow-200 bg-yellow-50/50 dark:bg-yellow-900/10 dark:border-yellow-700">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-3">
+            <div className="w-12 h-12 bg-yellow-500 rounded-xl flex items-center justify-center flex-shrink-0">
+              <FaExclamationTriangle className="text-white text-lg" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Modération des épreuves</h2>
+              <p className="text-gray-500 dark:text-gray-400 text-sm">
+                {pendingData?.count ?? 0} épreuve(s) en attente de validation
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => refetchPending()}
+            className="btn-secondary text-sm flex items-center space-x-1"
+            disabled={pendingLoading}
+          >
+            <FaSync className={pendingLoading ? 'animate-spin' : ''} />
+            <span>Actualiser</span>
+          </button>
+        </div>
+
+        {pendingData?.results && pendingData.results.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-yellow-200 dark:border-yellow-800">
+                  <th className="text-left py-2 px-3 font-semibold text-gray-600 dark:text-gray-400">Titre</th>
+                  <th className="text-left py-2 px-3 font-semibold text-gray-600 dark:text-gray-400">Matière</th>
+                  <th className="text-left py-2 px-3 font-semibold text-gray-600 dark:text-gray-400">Niveau</th>
+                  <th className="text-left py-2 px-3 font-semibold text-gray-600 dark:text-gray-400">Uploadé par</th>
+                  <th className="text-left py-2 px-3 font-semibold text-gray-600 dark:text-gray-400">Date</th>
+                  <th className="text-right py-2 px-3 font-semibold text-gray-600 dark:text-gray-400">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pendingData.results.map((ep) => (
+                  <tr key={ep.id} className="border-b border-gray-50 dark:border-gray-700 hover:bg-yellow-50/50 dark:hover:bg-yellow-900/10">
+                    <td className="py-3 px-3 font-medium text-gray-800 dark:text-gray-200 max-w-[200px] truncate">{ep.titre}</td>
+                    <td className="py-3 px-3 text-gray-600 dark:text-gray-400">{ep.matiere}</td>
+                    <td className="py-3 px-3">
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${niveauColors[ep.niveau] || 'bg-gray-100 text-gray-600'}`}>
+                        {ep.niveau}
+                      </span>
+                    </td>
+                    <td className="py-3 px-3 text-gray-600 dark:text-gray-400">{ep.uploaded_by_username || '—'}</td>
+                    <td className="py-3 px-3 text-gray-500 dark:text-gray-400 text-xs">
+                      {new Date(ep.created_at).toLocaleDateString('fr-FR')}
+                    </td>
+                    <td className="py-3 px-3 text-right">
+                      <div className="flex items-center justify-end space-x-2">
+                        <button
+                          onClick={() => handleApprove(ep.id)}
+                          className="inline-flex items-center space-x-1 px-3 py-1.5 bg-green-500 text-white text-xs font-medium rounded-lg hover:bg-green-600 transition-colors"
+                          title="Approuver"
+                        >
+                          <FaCheck />
+                          <span>Approuver</span>
+                        </button>
+                        <button
+                          onClick={() => handleReject(ep.id)}
+                          className="inline-flex items-center space-x-1 px-3 py-1.5 bg-red-500 text-white text-xs font-medium rounded-lg hover:bg-red-600 transition-colors"
+                          title="Rejeter"
+                        >
+                          <FaTimesCircle />
+                          <span>Rejeter</span>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="text-center py-6 text-gray-400 dark:text-gray-500">
+            <FaCheck className="text-3xl mx-auto mb-2 text-green-400" />
+            <p>Aucune épreuve en attente de modération</p>
+          </div>
+        )}
+      </div>
+
       {/* Generate Data Section */}
-      <div className="card border-2 border-dashed border-primary-200 bg-primary-50/50">
+      <div className="card border-2 border-dashed border-primary-200 bg-primary-50/50 dark:bg-primary-900/20 dark:border-primary-700">
         <div className="flex items-start space-x-4">
           <div className="w-12 h-12 bg-primary-600 rounded-xl flex items-center justify-center flex-shrink-0">
             <FaDatabase className="text-white text-lg" />
           </div>
           <div className="flex-1">
-            <h2 className="text-xl font-bold text-gray-800 mb-1">Générer des données synthétiques</h2>
+            <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-1">Générer des données synthétiques</h2>
             <p className="text-gray-500 text-sm mb-4">
               Peuplez la base de données avec des utilisateurs, épreuves, interactions, évaluations et commentaires de test.
               Les données générées sont similaires à celles créées en local.
@@ -255,7 +376,7 @@ const AdminPage = () => {
                 </button>
               </div>
               <p className="text-xs text-gray-400 mt-3">
-                💡 En local : <code className="bg-gray-100 px-1 rounded">python manage.py import_data banque_epreuves_export.json</code>
+                En local : <code className="bg-gray-100 px-1 rounded">python manage.py import_data banque_epreuves_export.json</code>
               </p>
             </div>
           </div>

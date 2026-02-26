@@ -6,6 +6,7 @@ from .views import (
     upload_epreuve, record_view,
     register_user, generate_sample_data, dashboard_stats,
     export_data_api,
+    pending_epreuves, approve_epreuve, reject_epreuve,
 )
 
 router = DefaultRouter()
@@ -28,6 +29,11 @@ urlpatterns = [
     path('admin/generate-data/', generate_sample_data, name='generate-data'),
     path('admin/stats/', dashboard_stats, name='dashboard-stats'),
     path('admin/export-data/', export_data_api, name='export-data'),
+
+    # Admin : modération
+    path('admin/pending/', pending_epreuves, name='pending-epreuves'),
+    path('admin/epreuves/<int:pk>/approve/', approve_epreuve, name='approve-epreuve'),
+    path('admin/epreuves/<int:pk>/reject/', reject_epreuve, name='reject-epreuve'),
 
     # Router DRF
     path('', include(router.urls)),

@@ -2,17 +2,20 @@ import random
 import json
 import csv
 import io
+import hashlib
 
 from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action, api_view, permission_classes, parser_classes
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Q, Count
 from django.http import FileResponse, Http404, HttpResponse
 from django.contrib.auth import get_user_model
 from django.core.serializers.json import DjangoJSONEncoder
+from django.utils import timezone
+from datetime import timedelta
 import mimetypes
 
 from .models import Epreuve, Interaction, Evaluation, Commentaire
@@ -65,21 +68,21 @@ class EpreuveViewSet(viewsets.ModelViewSet):
         if getattr(self, 'swagger_fake_view', False):
             return Epreuve.objects.none()
         
-        queryset = Epreuve.objects.all()
-        
         user = self.request.user
-        if not user.is_staff:
-            # Définir la hiérarchie des niveaux pour un filtrage correct
+        if user.is_staff:
+            # Admin voit TOUT (y compris non approuvées)
+            queryset = Epreuve.objects.all()
+        else:
+            # Utilisateurs normaux : uniquement épreuves approuvées + leurs propres uploads
             niveau_order = ['L1', 'L2', 'L3', 'M1', 'M2']
             user_niveau = user.niveau
             if user_niveau and user_niveau in niveau_order:
                 idx = niveau_order.index(user_niveau)
                 allowed_niveaux = niveau_order[:idx + 1]
             else:
-                # Pas de niveau défini → tout voir
                 allowed_niveaux = niveau_order
-            queryset = queryset.filter(
-                Q(niveau__in=allowed_niveaux) |
+            queryset = Epreuve.objects.filter(
+                Q(is_approved=True, niveau__in=allowed_niveaux) |
                 Q(uploaded_by=user)
             )
         
@@ -270,28 +273,108 @@ class CommentaireViewSet(viewsets.ModelViewSet):
 @parser_classes([MultiPartParser, FormParser])
 def upload_epreuve(request):
     """
-    Endpoint pour uploader une nouvelle épreuve avec fichier PDF
+    Endpoint pour uploader une nouvelle épreuve avec fichier PDF.
+    - Limite : 5 uploads par jour par utilisateur
+    - Vérifie les magic bytes PDF
+    - Détecte les doublons par hash SHA-256
+    - Détecte les doublons par titre similaire (même matière + niveau + année)
+    - Les épreuves ne sont PAS approuvées automatiquement (sauf si admin)
     """
+    user = request.user
+
+    # ── Limite de fréquence : 5 uploads / jour ──
+    today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    uploads_today = Epreuve.objects.filter(
+        uploaded_by=user,
+        created_at__gte=today_start,
+    ).count()
+    if uploads_today >= 5 and not user.is_staff:
+        return Response(
+            {'error': 'Vous avez atteint la limite de 5 uploads par jour. Réessayez demain.'},
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+        )
+
+    # ── Vérification magic bytes PDF ──
+    fichier = request.FILES.get('fichier_pdf')
+    if fichier:
+        header = fichier.read(5)
+        fichier.seek(0)  # remettre le curseur au début
+        if header != b'%PDF-':
+            return Response(
+                {'error': 'Le fichier envoyé n\'est pas un vrai PDF (signature invalide).'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # ── Détection de doublon par hash SHA-256 ──
+        hasher = hashlib.sha256()
+        for chunk in fichier.chunks():
+            hasher.update(chunk)
+        file_hash = hasher.hexdigest()
+        fichier.seek(0)  # remettre le curseur au début
+
+        existing_hash = Epreuve.objects.filter(hash_fichier=file_hash).first()
+        if existing_hash:
+            return Response(
+                {
+                    'error': 'Ce fichier PDF existe déjà dans la base de données.',
+                    'doublon': {
+                        'id': existing_hash.id,
+                        'titre': existing_hash.titre,
+                    },
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+    # ── Détection de doublon par titre similaire ──
+    titre = request.data.get('titre', '').strip()
+    matiere = request.data.get('matiere', '').strip()
+    niveau = request.data.get('niveau', '').strip()
+    annee = request.data.get('annee_academique', '').strip()
+    if titre and matiere and niveau and annee:
+        titre_doublon = Epreuve.objects.filter(
+            titre__iexact=titre,
+            matiere__iexact=matiere,
+            niveau=niveau,
+            annee_academique=annee,
+        ).first()
+        if titre_doublon:
+            return Response(
+                {
+                    'error': 'Une épreuve avec le même titre, matière, niveau et année existe déjà.',
+                    'doublon': {
+                        'id': titre_doublon.id,
+                        'titre': titre_doublon.titre,
+                    },
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
     serializer = EpreuveUploadSerializer(
         data=request.data,
         context={'request': request}
     )
     
     if serializer.is_valid():
+        # Admin → approuvé automatiquement, sinon → en attente de modération
         epreuve = serializer.save(
-            uploaded_by=request.user,
-            is_approved=True,  # Approuvé automatiquement
+            uploaded_by=user,
+            is_approved=user.is_staff,
         )
         
-        # Retourner les détails complets de l'épreuve créée
         detail_serializer = EpreuveDetailSerializer(
             epreuve,
             context={'request': request}
         )
         
+        message = (
+            'Épreuve uploadée et publiée avec succès !'
+            if user.is_staff
+            else 'Épreuve uploadée avec succès ! Elle sera visible après validation par un modérateur.'
+        )
+        
         return Response(
             {
-                'message': 'Épreuve uploadée avec succès',
+                'message': message,
                 'epreuve': detail_serializer.data
             },
             status=status.HTTP_201_CREATED
@@ -304,6 +387,53 @@ def upload_epreuve(request):
         },
         status=status.HTTP_400_BAD_REQUEST
     )
+
+
+# ────────────────────────────────────────────────────────
+# Modération (admin seulement)
+# ────────────────────────────────────────────────────────
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def pending_epreuves(request):
+    """GET /api/admin/pending/ — Liste des épreuves en attente de modération."""
+    if not request.user.is_staff:
+        return Response({'error': 'Accès réservé aux administrateurs'}, status=status.HTTP_403_FORBIDDEN)
+    epreuves = Epreuve.objects.filter(is_approved=False).order_by('-created_at')
+    serializer = EpreuveDetailSerializer(epreuves, many=True, context={'request': request})
+    return Response({
+        'count': epreuves.count(),
+        'results': serializer.data,
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def approve_epreuve(request, pk):
+    """POST /api/admin/epreuves/<pk>/approve/ — Approuver une épreuve."""
+    if not request.user.is_staff:
+        return Response({'error': 'Accès réservé aux administrateurs'}, status=status.HTTP_403_FORBIDDEN)
+    try:
+        epreuve = Epreuve.objects.get(pk=pk)
+    except Epreuve.DoesNotExist:
+        return Response({'error': 'Épreuve non trouvée'}, status=status.HTTP_404_NOT_FOUND)
+    epreuve.is_approved = True
+    epreuve.save(update_fields=['is_approved'])
+    return Response({'message': f'Épreuve « {epreuve.titre} » approuvée.', 'id': epreuve.id})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def reject_epreuve(request, pk):
+    """POST /api/admin/epreuves/<pk>/reject/ — Rejeter (supprimer) une épreuve."""
+    if not request.user.is_staff:
+        return Response({'error': 'Accès réservé aux administrateurs'}, status=status.HTTP_403_FORBIDDEN)
+    try:
+        epreuve = Epreuve.objects.get(pk=pk)
+    except Epreuve.DoesNotExist:
+        return Response({'error': 'Épreuve non trouvée'}, status=status.HTTP_404_NOT_FOUND)
+    titre = epreuve.titre
+    epreuve.delete()
+    return Response({'message': f'Épreuve « {titre} » rejetée et supprimée.'})
 
 
 @api_view(['POST'])
@@ -534,10 +664,11 @@ def dashboard_stats(request):
 
     stats = {
         'total_users': User.objects.filter(is_superuser=False).count(),
-        'total_epreuves': Epreuve.objects.count(),
+        'total_epreuves': Epreuve.objects.filter(is_approved=True).count(),
         'total_interactions': Interaction.objects.count(),
         'total_evaluations': Evaluation.objects.count(),
         'total_commentaires': Commentaire.objects.count(),
+        'pending_count': Epreuve.objects.filter(is_approved=False).count(),
         'epreuves_par_matiere': list(
             Epreuve.objects.values('matiere')
             .annotate(count=Count('id'))

@@ -3,12 +3,14 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { useAuth } from '@/contexts/AuthContext'
 import type { RegisterData } from '@/types'
-import { FaUser, FaLock, FaEnvelope, FaBook, FaGraduationCap } from 'react-icons/fa'
+import { FaUser, FaLock, FaEnvelope, FaBook, FaGraduationCap, FaEye, FaEyeSlash } from 'react-icons/fa'
 
 const RegisterPage = () => {
   const navigate = useNavigate()
   const { register: registerUser } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   const {
     register,
@@ -131,36 +133,52 @@ const RegisterPage = () => {
 
             {/* Password */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Mot de passe</label>
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Mot de passe</label>
               <div className="relative">
                 <FaLock className="absolute left-3.5 top-3.5 text-gray-400 text-sm" />
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   {...register('password', {
                     required: 'Mot de passe requis',
                     minLength: { value: 8, message: 'Minimum 8 caractères' },
                   })}
-                  className="input-field pl-10"
+                  className="input-field pl-10 pr-10"
                   placeholder="••••••••"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <FaEyeSlash /> : <FaEye />}
+                </button>
               </div>
               {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
             </div>
 
             {/* Confirm Password */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Confirmer le mot de passe</label>
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Confirmer le mot de passe</label>
               <div className="relative">
                 <FaLock className="absolute left-3.5 top-3.5 text-gray-400 text-sm" />
                 <input
-                  type="password"
+                  type={showConfirmPassword ? 'text' : 'password'}
                   {...register('password_confirm', {
                     required: 'Confirmation requise',
                     validate: (value) => value === password || 'Les mots de passe ne correspondent pas',
                   })}
-                  className="input-field pl-10"
+                  className="input-field pl-10 pr-10"
                   placeholder="••••••••"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                  tabIndex={-1}
+                >
+                  {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+                </button>
               </div>
               {errors.password_confirm && <p className="text-red-500 text-xs mt-1">{errors.password_confirm.message}</p>}
             </div>

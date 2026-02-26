@@ -25,24 +25,25 @@ const UploadEpreuvePage = () => {
   const uploadMutation = useMutation({
     mutationFn: (formData: FormData) => epreuvesAPI.uploadEpreuve(formData),
     onSuccess: (response: any) => {
-      toast.success('Épreuve uploadée avec succès !')
+      const message = response.message || 'Épreuve uploadée avec succès !'
+      toast.success(message, { duration: 5000 })
       // Le backend retourne { message, epreuve: { id, ... } }
       const epreuveId = response.epreuve?.id || response.id
       if (epreuveId) {
         navigate(`/epreuves/${epreuveId}`)
       } else {
-        console.error('ID de l\'épreuve non trouvé dans la réponse:', response)
-        toast.error('Épreuve uploadée mais impossible de rediriger')
         navigate('/epreuves')
       }
     },
     onError: (error: any) => {
       console.error('Erreur upload:', error)
-      const details = error.response?.data?.details
       const errorMessage = error.response?.data?.error || error.response?.data?.detail || 'Erreur lors de l\'upload'
+      const details = error.response?.data?.details
+      const doublon = error.response?.data?.doublon
       
-      if (details) {
-        // Afficher les erreurs de validation spécifiques
+      if (doublon) {
+        toast.error(`${errorMessage} (Doublon : "${doublon.titre}")`, { duration: 6000 })
+      } else if (details) {
         Object.entries(details).forEach(([field, messages]: [string, any]) => {
           const msg = Array.isArray(messages) ? messages.join(', ') : messages
           toast.error(`${field}: ${msg}`)
@@ -84,8 +85,8 @@ const UploadEpreuvePage = () => {
       toast.error('Seuls les fichiers PDF sont acceptés')
       return
     }
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('Le fichier ne doit pas dépasser 10 MB')
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error('Le fichier ne doit pas dépasser 20 MB')
       return
     }
     setPdfFile(file)
@@ -150,7 +151,7 @@ const UploadEpreuvePage = () => {
                 <p className="text-xs text-gray-500 mt-4">
                   <span className="font-medium">Formats acceptés :</span> PDF uniquement
                   <br />
-                  <span className="font-medium">Taille max :</span> 10 MB
+                  <span className="font-medium">Taille max :</span> 20 MB
                 </p>
               </>
             ) : (
@@ -307,7 +308,7 @@ const UploadEpreuvePage = () => {
 
         {/* Note d'information */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h3 className="font-medium text-blue-900 mb-2">📌 Note importante</h3>
+          <h3 className="font-medium text-blue-900 mb-2">Note importante</h3>
           <p className="text-sm text-blue-800">
             Votre épreuve sera soumise à modération avant d'être publiée. 
             Assurez-vous que le contenu est approprié et que vous avez le droit de le partager.
