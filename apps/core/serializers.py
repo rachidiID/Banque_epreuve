@@ -7,11 +7,53 @@ User = get_user_model()
 
 
 class UserSerializer(serializers.ModelSerializer):
+    photo_profil_url = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'first_name', 'last_name', 
-                  'niveau', 'filiere', 'date_inscription', 'is_active', 'is_staff']
+                  'niveau', 'filiere', 'date_inscription', 'is_active', 'is_staff',
+                  'photo_profil_url']
         read_only_fields = ['id', 'date_inscription', 'is_staff']
+
+    @extend_schema_field(serializers.CharField)
+    def get_photo_profil_url(self, obj):
+        if obj.photo_profil:
+            try:
+                url = obj.photo_profil.url
+                if url.startswith('http'):
+                    return url
+                request = self.context.get('request')
+                if request:
+                    return request.build_absolute_uri(url)
+            except Exception:
+                pass
+        return None
+
+
+class UserUpdateSerializer(serializers.ModelSerializer):
+    """Serializer pour la mise à jour du profil (email non modifiable)."""
+    photo_profil = serializers.ImageField(required=False, allow_null=True)
+
+    class Meta:
+        model = User
+        fields = ['username', 'first_name', 'last_name', 'niveau', 'filiere', 'photo_profil']
+
+    def validate_photo_profil(self, value):
+        if value:
+            # Max 5 MB
+            max_size = 5 * 1024 * 1024
+            if value.size > max_size:
+                raise serializers.ValidationError(
+                    f"La photo ne doit pas dépasser 5 MB. Taille actuelle: {value.size / (1024*1024):.2f} MB"
+                )
+            # Vérifier le type
+            allowed_types = ['image/jpeg', 'image/png', 'image/webp']
+            if value.content_type not in allowed_types:
+                raise serializers.ValidationError(
+                    "Seuls les formats JPEG, PNG et WebP sont acceptés."
+                )
+        return value
 
 
 class UserCreateSerializer(serializers.ModelSerializer):

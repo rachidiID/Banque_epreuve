@@ -25,6 +25,16 @@ def epreuve_upload_path(instance, filename):
     return f"epreuves/{now.year}/{now.month:02d}/{new_filename}"
 
 
+def profile_photo_path(instance, filename):
+    """Génère un chemin d'upload pour les photos de profil."""
+    import hashlib
+    from django.utils import timezone
+    now = timezone.now()
+    ext = os.path.splitext(filename)[1]
+    unique_hash = hashlib.md5(f"{instance.username}{now}".encode()).hexdigest()[:8]
+    return f"profiles/{instance.username}_{unique_hash}{ext}"
+
+
 class User(AbstractUser):
     NIVEAU_CHOICES = [
         ('P1', 'Prépa 1'),
@@ -46,6 +56,12 @@ class User(AbstractUser):
     
     niveau = models.CharField(max_length=2, choices=NIVEAU_CHOICES, null=True, blank=True)
     filiere = models.CharField(max_length=15, choices=FILIERE_CHOICES, null=True, blank=True)
+    photo_profil = models.ImageField(
+        upload_to=profile_photo_path,
+        blank=True,
+        null=True,
+        help_text="Photo de profil (JPG, PNG, max 5 MB)"
+    )
     date_inscription = models.DateTimeField(auto_now_add=True)
     
     class Meta:

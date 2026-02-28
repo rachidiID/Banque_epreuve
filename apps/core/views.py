@@ -20,7 +20,7 @@ import mimetypes
 
 from .models import Epreuve, Interaction, Evaluation, Commentaire
 from .serializers import (
-    UserSerializer, UserCreateSerializer,
+    UserSerializer, UserCreateSerializer, UserUpdateSerializer,
     EpreuveListSerializer, EpreuveDetailSerializer, EpreuveCreateUpdateSerializer,
     EpreuveUploadSerializer,
     InteractionSerializer, InteractionCreateSerializer,
@@ -46,6 +46,24 @@ class UserViewSet(viewsets.ModelViewSet):
     def me(self, request):
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
+
+    @action(detail=False, methods=['put', 'patch'], url_path='me/update',
+            parser_classes=[MultiPartParser, FormParser, JSONParser])
+    def update_me(self, request):
+        """Mettre à jour le profil de l'utilisateur connecté (sauf email)."""
+        serializer = UserUpdateSerializer(request.user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        # Renvoyer les données complètes du profil mis à jour
+        return Response(UserSerializer(request.user, context={'request': request}).data)
+
+    @action(detail=False, methods=['delete'], url_path='me/photo')
+    def delete_photo(self, request):
+        """Supprimer la photo de profil."""
+        user = request.user
+        if user.photo_profil:
+            user.photo_profil.delete(save=True)
+        return Response({'detail': 'Photo de profil supprimée.'}, status=status.HTTP_200_OK)
 
 
 class EpreuveViewSet(viewsets.ModelViewSet):

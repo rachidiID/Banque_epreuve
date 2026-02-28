@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
 import { epreuvesAPI } from '@/api/epreuves'
@@ -7,6 +8,8 @@ import { FaBook, FaSearch, FaStar, FaUsers, FaArrowRight, FaDownload, FaEye } fr
 
 const HomePage = () => {
   const { isAuthenticated, user } = useAuth()
+  const navigate = useNavigate()
+  const [searchQuery, setSearchQuery] = useState('')
 
   const { data: recentEpreuves } = useQuery({
     queryKey: ['epreuves', 'recent'],
@@ -36,13 +39,43 @@ const HomePage = () => {
             Partagez, découvrez et préparez-vous avec des épreuves académiques.
             Recommandations intelligentes personnalisées.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/epreuves" className="bg-white text-primary-700 px-8 py-3 rounded-xl font-bold hover:bg-gray-100 inline-flex items-center space-x-2 transition-all shadow-lg hover:shadow-xl">
+
+          {/* Barre de recherche responsive */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (searchQuery.trim()) {
+                navigate(`/epreuves?search=${encodeURIComponent(searchQuery.trim())}`)
+              } else {
+                navigate('/epreuves')
+              }
+            }}
+            className="max-w-xl mx-auto mb-6 px-4 sm:px-0"
+          >
+            <div className="relative flex items-center">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Rechercher une épreuve, matière, professeur..."
+                className="w-full pl-5 pr-14 py-3.5 sm:py-4 rounded-2xl text-gray-800 bg-white/95 backdrop-blur-sm shadow-xl border-0 focus:ring-2 focus:ring-accent-400 focus:outline-none text-sm sm:text-base placeholder-gray-400"
+              />
+              <button
+                type="submit"
+                className="absolute right-2 bg-gradient-to-r from-accent-500 to-accent-600 text-white p-2.5 sm:p-3 rounded-xl hover:from-accent-600 hover:to-accent-700 transition-all shadow-md"
+              >
+                <FaSearch className="text-sm sm:text-base" />
+              </button>
+            </div>
+          </form>
+
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4 sm:px-0">
+            <Link to="/epreuves" className="bg-white text-primary-700 px-6 sm:px-8 py-3 rounded-xl font-bold hover:bg-gray-100 inline-flex items-center justify-center space-x-2 transition-all shadow-lg hover:shadow-xl text-sm sm:text-base">
               <FaSearch />
               <span>Explorer les épreuves</span>
             </Link>
             {!isAuthenticated && (
-              <Link to="/register" className="bg-accent-500 text-white px-8 py-3 rounded-xl font-bold hover:bg-accent-600 inline-flex items-center space-x-2 transition-all shadow-lg hover:shadow-xl">
+              <Link to="/register" className="bg-accent-500 text-white px-6 sm:px-8 py-3 rounded-xl font-bold hover:bg-accent-600 inline-flex items-center justify-center space-x-2 transition-all shadow-lg hover:shadow-xl text-sm sm:text-base">
                 <FaUsers />
                 <span>Créer un compte</span>
               </Link>

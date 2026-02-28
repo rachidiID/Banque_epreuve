@@ -35,6 +35,17 @@ export const authAPI = {
     return response.data
   },
 
+  updateProfile: async (data: FormData): Promise<User> => {
+    const response = await apiClient.patch<User>('/users/me/update/', data, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    return response.data
+  },
+
+  deletePhoto: async (): Promise<void> => {
+    await apiClient.delete('/users/me/photo/')
+  },
+
   refreshToken: async (refreshToken: string): Promise<{ access: string }> => {
     const response = await apiClient.post<{ access: string }>('/token/refresh/', {
       refresh: refreshToken,

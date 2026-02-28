@@ -10,6 +10,7 @@ export interface User {
   date_inscription?: string
   is_staff?: boolean
   is_active?: boolean
+  photo_profil_url?: string | null
 }
 
 export interface Epreuve {
