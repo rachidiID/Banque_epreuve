@@ -20,6 +20,7 @@ const RegisterPage = () => {
   } = useForm<RegisterData>()
 
   const password = watch('password')
+  const selectedNiveau = watch('niveau')
 
   const onSubmit = async (data: RegisterData) => {
     setIsLoading(true)
@@ -107,18 +108,19 @@ const RegisterPage = () => {
             </div>
 
             {/* Row: Niveau / Filière */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className={`grid ${selectedNiveau === 'P1' || selectedNiveau === 'P2' ? 'grid-cols-1' : 'grid-cols-2'} gap-4`}>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">Niveau</label>
                 <select {...register('niveau')} className="input-field">
                   <option value="">Sélectionner</option>
-                  <option value="L1">Licence 1</option>
-                  <option value="L2">Licence 2</option>
+                  <option value="P1">Prépa 1</option>
+                  <option value="P2">Prépa 2</option>
                   <option value="L3">Licence 3</option>
                   <option value="M1">Master 1</option>
                   <option value="M2">Master 2</option>
                 </select>
               </div>
+              {selectedNiveau !== 'P1' && selectedNiveau !== 'P2' && (
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">Filière</label>
                 <select {...register('filiere')} className="input-field">
@@ -127,8 +129,12 @@ const RegisterPage = () => {
                   <option value="INFO">Informatique</option>
                   <option value="PHYSIQUE">Physique</option>
                   <option value="CHIMIE">Chimie</option>
+                  <option value="RO">Recherche Opérationnelle</option>
+                  <option value="STAT_PROB">Statistique et Probabilité</option>
+                  <option value="MATH_FOND">Mathématique Fondamentale</option>
                 </select>
               </div>
+              )}
             </div>
 
             {/* Password */}

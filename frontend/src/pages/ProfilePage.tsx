@@ -119,8 +119,8 @@ const ProfilePage = () => {
 // Fonctions utilitaires
 function getNiveauLabel(niveau: string): string {
   const niveaux: Record<string, string> = {
-    L1: 'Licence 1',
-    L2: 'Licence 2',
+    P1: 'Prépa 1',
+    P2: 'Prépa 2',
     L3: 'Licence 3',
     M1: 'Master 1',
     M2: 'Master 2',
@@ -134,6 +134,9 @@ function getFiliereLabel(filiere: string): string {
     INFO: 'Informatique',
     PHYSIQUE: 'Physique',
     CHIMIE: 'Chimie',
+    RO: 'Recherche Opérationnelle',
+    STAT_PROB: 'Statistique et Probabilité',
+    MATH_FOND: 'Mathématique Fondamentale',
   }
   return filieres[filiere] || filiere
 }

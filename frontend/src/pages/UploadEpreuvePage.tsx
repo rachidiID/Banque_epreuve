@@ -215,6 +215,17 @@ const UploadEpreuvePage = () => {
                   <option value="Physique" />
                   <option value="Chimie" />
                   <option value="Biologie" />
+                  <option value="Programmation linéaire" />
+                  <option value="Optimisation combinatoire" />
+                  <option value="Théorie des graphes" />
+                  <option value="Statistique descriptive" />
+                  <option value="Statistique inférentielle" />
+                  <option value="Probabilités" />
+                  <option value="Processus stochastiques" />
+                  <option value="Topologie" />
+                  <option value="Analyse fonctionnelle" />
+                  <option value="Théorie des nombres" />
+                  <option value="Algèbre abstraite" />
                 </datalist>
                 {errors.matiere && (
                   <p className="text-red-500 text-sm mt-1">{errors.matiere.message}</p>
@@ -230,8 +241,8 @@ const UploadEpreuvePage = () => {
                   className="input-field"
                 >
                   <option value="">Sélectionner...</option>
-                  <option value="L1">Licence 1</option>
-                  <option value="L2">Licence 2</option>
+                  <option value="P1">Prépa 1</option>
+                  <option value="P2">Prépa 2</option>
                   <option value="L3">Licence 3</option>
                   <option value="M1">Master 1</option>
                   <option value="M2">Master 2</option>

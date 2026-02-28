@@ -27,8 +27,8 @@ def epreuve_upload_path(instance, filename):
 
 class User(AbstractUser):
     NIVEAU_CHOICES = [
-        ('L1', 'Licence 1'),
-        ('L2', 'Licence 2'),
+        ('P1', 'Prépa 1'),
+        ('P2', 'Prépa 2'),
         ('L3', 'Licence 3'),
         ('M1', 'Master 1'),
         ('M2', 'Master 2'),
@@ -39,10 +39,13 @@ class User(AbstractUser):
         ('INFO', 'Informatique'),
         ('PHYSIQUE', 'Physique'),
         ('CHIMIE', 'Chimie'),
+        ('RO', 'Recherche Opérationnelle'),
+        ('STAT_PROB', 'Statistique et Probabilité'),
+        ('MATH_FOND', 'Mathématique Fondamentale'),
     ]
     
     niveau = models.CharField(max_length=2, choices=NIVEAU_CHOICES, null=True, blank=True)
-    filiere = models.CharField(max_length=10, choices=FILIERE_CHOICES, null=True, blank=True)
+    filiere = models.CharField(max_length=15, choices=FILIERE_CHOICES, null=True, blank=True)
     date_inscription = models.DateTimeField(auto_now_add=True)
     
     class Meta:

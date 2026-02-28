@@ -136,15 +136,26 @@ const AdminPage = () => {
       document.body.removeChild(a)
       toast.success(`Export ${format.toUpperCase()} téléchargé !`)
     } catch (error: any) {
-      toast.error(error.response?.data?.error || "Erreur lors de l'export")
+      // Quand responseType est 'blob', les erreurs sont aussi des blobs
+      let errorMsg = "Erreur lors de l'export"
+      if (error.response?.data instanceof Blob) {
+        try {
+          const text = await error.response.data.text()
+          const parsed = JSON.parse(text)
+          errorMsg = parsed.error || errorMsg
+        } catch { /* ignore parse error */ }
+      } else {
+        errorMsg = error.response?.data?.error || errorMsg
+      }
+      toast.error(errorMsg)
     } finally {
       setIsExporting(false)
     }
   }
 
   const niveauColors: Record<string, string> = {
-    L1: 'bg-blue-100 text-blue-700',
-    L2: 'bg-indigo-100 text-indigo-700',
+    P1: 'bg-teal-100 text-teal-700',
+    P2: 'bg-cyan-100 text-cyan-700',
     L3: 'bg-purple-100 text-purple-700',
     M1: 'bg-pink-100 text-pink-700',
     M2: 'bg-red-100 text-red-700',

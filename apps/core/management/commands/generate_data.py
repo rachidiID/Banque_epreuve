@@ -54,8 +54,8 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS('Donnees synthetiques generees avec succes'))
 
     def create_users(self, count):
-        niveaux = ['L1', 'L2', 'L3', 'M1', 'M2']
-        filieres = ['MATH', 'INFO', 'PHYSIQUE', 'CHIMIE']
+        niveaux = ['P1', 'P2', 'L3', 'M1', 'M2']
+        filieres = ['MATH', 'INFO', 'PHYSIQUE', 'CHIMIE', 'RO', 'STAT_PROB', 'MATH_FOND']
         users = []
 
         for i in range(count):
@@ -73,14 +73,17 @@ class Command(BaseCommand):
         return users
 
     def create_epreuves(self, count):
-        niveaux = ['L1', 'L2', 'L3', 'M1', 'M2']
+        niveaux = ['P1', 'P2', 'L3', 'M1', 'M2']
         types = ['PARTIEL', 'EXAMEN', 'TD', 'RATTRAPAGE', 'CC']
         
         matieres_par_filiere = {
             'MATH': ['Analyse', 'Algebre', 'Probabilites', 'Statistiques', 'Geometrie'],
             'INFO': ['Algorithmes', 'Bases de donnees', 'Reseaux', 'IA', 'Programmation'],
             'PHYSIQUE': ['Mecanique', 'Thermodynamique', 'Electromagnetisme', 'Optique'],
-            'CHIMIE': ['Chimie organique', 'Chimie minerale', 'Chimie analytique']
+            'CHIMIE': ['Chimie organique', 'Chimie minerale', 'Chimie analytique'],
+            'RO': ['Programmation lineaire', 'Optimisation combinatoire', 'Theorie des graphes', 'Simulation'],
+            'STAT_PROB': ['Probabilites', 'Statistique descriptive', 'Statistique inferentielle', 'Processus stochastiques'],
+            'MATH_FOND': ['Topologie', 'Analyse fonctionnelle', 'Theorie des nombres', 'Algebre abstraite']
         }
         
         professeurs = ['Prof. ADJIBI', 'Prof. KOUTON', 'Prof. SOSSA', 'Prof. HOUNKONNOU', 

@@ -70,8 +70,8 @@ const EpreuvesListPage = () => {
             className="input-field"
           >
             <option value="">Tous les niveaux</option>
-            <option value="L1">Licence 1</option>
-            <option value="L2">Licence 2</option>
+            <option value="P1">Prépa 1</option>
+            <option value="P2">Prépa 2</option>
             <option value="L3">Licence 3</option>
             <option value="M1">Master 1</option>
             <option value="M2">Master 2</option>

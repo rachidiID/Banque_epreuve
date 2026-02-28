@@ -74,7 +74,7 @@ class EpreuveViewSet(viewsets.ModelViewSet):
             queryset = Epreuve.objects.all()
         else:
             # Utilisateurs normaux : uniquement épreuves approuvées + leurs propres uploads
-            niveau_order = ['L1', 'L2', 'L3', 'M1', 'M2']
+            niveau_order = ['P1', 'P2', 'L3', 'M1', 'M2']
             user_niveau = user.niveau
             if user_niveau and user_niveau in niveau_order:
                 idx = niveau_order.index(user_niveau)
@@ -513,14 +513,17 @@ def generate_sample_data(request):
 
     from datetime import datetime, timedelta
 
-    niveaux = ['L1', 'L2', 'L3', 'M1', 'M2']
-    filieres = ['MATH', 'INFO', 'PHYSIQUE', 'CHIMIE']
+    niveaux = ['P1', 'P2', 'L3', 'M1', 'M2']
+    filieres = ['MATH', 'INFO', 'PHYSIQUE', 'CHIMIE', 'RO', 'STAT_PROB', 'MATH_FOND']
     types = ['PARTIEL', 'EXAMEN', 'TD', 'RATTRAPAGE', 'CC']
     matieres_par_filiere = {
         'MATH': ['Analyse', 'Algebre', 'Probabilites', 'Statistiques', 'Geometrie'],
         'INFO': ['Algorithmes', 'Bases de donnees', 'Reseaux', 'IA', 'Programmation'],
         'PHYSIQUE': ['Mecanique', 'Thermodynamique', 'Electromagnetisme', 'Optique'],
         'CHIMIE': ['Chimie organique', 'Chimie minerale', 'Chimie analytique'],
+        'RO': ['Programmation lineaire', 'Optimisation combinatoire', 'Theorie des graphes', 'Simulation'],
+        'STAT_PROB': ['Probabilites', 'Statistique descriptive', 'Statistique inferentielle', 'Processus stochastiques'],
+        'MATH_FOND': ['Topologie', 'Analyse fonctionnelle', 'Theorie des nombres', 'Algebre abstraite'],
     }
     professeurs = [
         'Prof. ADJIBI', 'Prof. KOUTON', 'Prof. SOSSA', 'Prof. HOUNKONNOU',
@@ -771,59 +774,73 @@ def _export_csv_response():
     import zipfile
 
     User = get_user_model()
-    buffer = io.BytesIO()
-    with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
-        # Interactions CSV
-        output = io.StringIO()
-        writer = csv.writer(output)
-        writer.writerow(['user_id', 'epreuve_id', 'action_type', 'session_duration', 'timestamp'])
-        for row in Interaction.objects.values_list(
-            'user_id', 'epreuve_id', 'action_type', 'session_duration', 'timestamp'
-        ):
-            writer.writerow(row)
-        zf.writestr('interactions.csv', output.getvalue())
 
-        # Évaluations CSV
-        output = io.StringIO()
-        writer = csv.writer(output)
-        writer.writerow(['user_id', 'epreuve_id', 'note_difficulte', 'note_pertinence', 'timestamp'])
-        for row in Evaluation.objects.values_list(
-            'user_id', 'epreuve_id', 'note_difficulte', 'note_pertinence', 'created_at'
-        ):
-            writer.writerow(row)
-        zf.writestr('evaluations.csv', output.getvalue())
+    try:
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+            # --- Helper pour écrire un CSV proprement ---
+            def write_csv(filename, headers, queryset):
+                output = io.StringIO()
+                writer = csv.writer(output)
+                writer.writerow(headers)
+                for row in queryset:
+                    # Convertir chaque valeur en str pour éviter les erreurs de sérialisation
+                    writer.writerow([str(v) if v is not None else '' for v in row])
+                zf.writestr(filename, output.getvalue())
 
-        # Épreuves CSV
-        output = io.StringIO()
-        writer = csv.writer(output)
-        writer.writerow(['id', 'titre', 'matiere', 'niveau', 'type_epreuve', 'annee_academique',
-                         'professeur', 'nb_vues', 'nb_telechargements',
-                         'note_moyenne_difficulte', 'note_moyenne_pertinence'])
-        for row in Epreuve.objects.values_list(
-            'id', 'titre', 'matiere', 'niveau', 'type_epreuve', 'annee_academique',
-            'professeur', 'nb_vues', 'nb_telechargements',
-            'note_moyenne_difficulte', 'note_moyenne_pertinence'
-        ):
-            writer.writerow(row)
-        zf.writestr('epreuves.csv', output.getvalue())
+            # Interactions CSV
+            write_csv(
+                'interactions.csv',
+                ['user_id', 'epreuve_id', 'action_type', 'session_duration', 'timestamp'],
+                Interaction.objects.values_list(
+                    'user_id', 'epreuve_id', 'action_type', 'session_duration', 'timestamp'
+                ),
+            )
 
-        # Utilisateurs CSV
-        output = io.StringIO()
-        writer = csv.writer(output)
-        writer.writerow(['id', 'username', 'niveau', 'filiere', 'date_joined'])
-        for row in User.objects.values_list('id', 'username', 'niveau', 'filiere', 'date_joined'):
-            writer.writerow(row)
-        zf.writestr('utilisateurs.csv', output.getvalue())
+            # Évaluations CSV
+            write_csv(
+                'evaluations.csv',
+                ['user_id', 'epreuve_id', 'note_difficulte', 'note_pertinence', 'created_at'],
+                Evaluation.objects.values_list(
+                    'user_id', 'epreuve_id', 'note_difficulte', 'note_pertinence', 'created_at'
+                ),
+            )
 
-        # Commentaires CSV
-        output = io.StringIO()
-        writer = csv.writer(output)
-        writer.writerow(['user_id', 'epreuve_id', 'contenu', 'created_at'])
-        for row in Commentaire.objects.values_list('user_id', 'epreuve_id', 'contenu', 'created_at'):
-            writer.writerow(row)
-        zf.writestr('commentaires.csv', output.getvalue())
+            # Épreuves CSV
+            write_csv(
+                'epreuves.csv',
+                ['id', 'titre', 'matiere', 'niveau', 'type_epreuve', 'annee_academique',
+                 'professeur', 'nb_vues', 'nb_telechargements',
+                 'note_moyenne_difficulte', 'note_moyenne_pertinence'],
+                Epreuve.objects.values_list(
+                    'id', 'titre', 'matiere', 'niveau', 'type_epreuve', 'annee_academique',
+                    'professeur', 'nb_vues', 'nb_telechargements',
+                    'note_moyenne_difficulte', 'note_moyenne_pertinence'
+                ),
+            )
 
-    buffer.seek(0)
-    response = HttpResponse(buffer.read(), content_type='application/zip')
-    response['Content-Disposition'] = 'attachment; filename="banque_epreuves_export.zip"'
-    return response
+            # Utilisateurs CSV
+            write_csv(
+                'utilisateurs.csv',
+                ['id', 'username', 'niveau', 'filiere', 'date_joined'],
+                User.objects.values_list('id', 'username', 'niveau', 'filiere', 'date_joined'),
+            )
+
+            # Commentaires CSV
+            write_csv(
+                'commentaires.csv',
+                ['user_id', 'epreuve_id', 'contenu', 'created_at'],
+                Commentaire.objects.values_list('user_id', 'epreuve_id', 'contenu', 'created_at'),
+            )
+
+        buffer.seek(0)
+        response = HttpResponse(buffer.read(), content_type='application/zip')
+        response['Content-Disposition'] = 'attachment; filename="banque_epreuves_export.zip"'
+        return response
+
+    except Exception as e:
+        return HttpResponse(
+            json.dumps({'error': f'Erreur lors de la génération CSV : {str(e)}'}),
+            content_type='application/json',
+            status=500,
+        )
