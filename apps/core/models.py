@@ -16,6 +16,7 @@ def epreuve_upload_path(instance, filename):
     # Nettoyer le nom de fichier
     name, ext = os.path.splitext(filename)
     clean_name = "".join(c for c in name if c.isalnum() or c in (' ', '-', '_')).rstrip()
+    clean_name = clean_name[:60]  # tronquer pour éviter les chemins trop longs
     
     # Générer un hash unique pour éviter les collisions
     unique_hash = hashlib.md5(f"{instance.titre}{now}".encode()).hexdigest()[:8]
@@ -93,6 +94,7 @@ class Epreuve(models.Model):
     # Fichier PDF (changement majeur : FileField au lieu de CharField)
     fichier_pdf = models.FileField(
         upload_to=epreuve_upload_path,
+        max_length=500,
         validators=[FileExtensionValidator(allowed_extensions=['pdf'])],
         help_text="Fichier PDF de l'épreuve (max 10 MB)",
         blank=True,
