@@ -98,13 +98,11 @@ class Command(BaseCommand):
                     niveau=ep['niveau'],
                     type_epreuve=ep['type_epreuve'],
                     annee_academique=ep.get('annee_academique', ''),
-                    professeur=ep.get('professeur', ''),
                     description=ep.get('description', ''),
                     nb_vues=ep.get('nb_vues', 0),
                     nb_telechargements=ep.get('nb_telechargements', 0),
                     note_moyenne_difficulte=ep.get('note_moyenne_difficulte', 0),
                     note_moyenne_pertinence=ep.get('note_moyenne_pertinence', 0),
-                    is_approved=ep.get('is_approved', False),
                     nb_pages=ep.get('nb_pages', 0),
                     taille_fichier=ep.get('taille_fichier', 0),
                 )

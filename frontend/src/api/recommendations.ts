@@ -9,7 +9,6 @@ interface RecommendationItem {
   niveau: string
   type_epreuve: string
   annee_academique: string
-  professeur: string | null
   nb_vues: number
   nb_telechargements: number
   note_moyenne_pertinence: number | null
@@ -39,7 +38,6 @@ function toEpreuve(item: RecommendationItem): Epreuve {
     niveau: item.niveau,
     type_epreuve: item.type_epreuve,
     annee_academique: item.annee_academique,
-    professeur: item.professeur,
     nb_vues: item.nb_vues || 0,
     nb_telechargements: item.nb_telechargements || 0,
     note_moyenne_pertinence: item.note_moyenne_pertinence ?? undefined,

@@ -83,7 +83,7 @@ class EpreuveListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Epreuve
         fields = ['id', 'titre', 'matiere', 'niveau', 'type_epreuve', 
-                  'annee_academique', 'professeur', 'nb_vues', 
+                  'annee_academique', 'nb_vues', 
                   'nb_telechargements', 'note_moyenne_difficulte', 
                   'note_moyenne_pertinence', 'created_at']
         read_only_fields = ['id', 'nb_vues', 'nb_telechargements', 
@@ -103,11 +103,11 @@ class EpreuveDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Epreuve
         fields = ['id', 'titre', 'matiere', 'niveau', 'type_epreuve', 
-                  'annee_academique', 'professeur', 'fichier_pdf', 'description',
+                  'annee_academique', 'fichier_pdf', 'description',
                   'nb_vues', 'nb_telechargements', 'note_moyenne_difficulte', 
                   'note_moyenne_pertinence', 'nb_evaluations', 'nb_commentaires',
                   'taille_fichier', 'taille_fichier_mb', 'hash_fichier', 'nb_pages',
-                  'texte_extrait', 'is_approved', 'uploaded_by', 'uploaded_by_username',
+                  'texte_extrait', 'uploaded_by', 'uploaded_by_username',
                   'fichier_url', 'download_url', 'preview_url',
                   'created_at', 'updated_at']
         read_only_fields = ['id', 'nb_vues', 'nb_telechargements', 
@@ -172,7 +172,7 @@ class EpreuveCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Epreuve
         fields = ['titre', 'matiere', 'niveau', 'type_epreuve', 
-                  'annee_academique', 'professeur', 'fichier_pdf', 'description']
+                  'annee_academique', 'fichier_pdf', 'description']
 
 
 class EpreuveUploadSerializer(serializers.ModelSerializer):
@@ -181,7 +181,7 @@ class EpreuveUploadSerializer(serializers.ModelSerializer):
     class Meta:
         model = Epreuve
         fields = ['titre', 'matiere', 'niveau', 'type_epreuve', 
-                  'annee_academique', 'professeur', 'description', 'fichier_pdf']
+                  'annee_academique', 'description', 'fichier_pdf']
     
     def validate_fichier_pdf(self, value):
         """Validation du fichier PDF"""

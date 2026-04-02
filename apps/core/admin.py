@@ -31,9 +31,9 @@ class UserAdmin(admin.ModelAdmin):
 
 @admin.register(Epreuve)
 class EpreuveAdmin(admin.ModelAdmin):
-    list_display = ['titre', 'matiere', 'niveau', 'type_epreuve', 'annee_academique', 'professeur', 'nb_vues', 'nb_telechargements', 'popularite']
+    list_display = ['titre', 'matiere', 'niveau', 'type_epreuve', 'annee_academique', 'nb_vues', 'nb_telechargements', 'popularite']
     list_filter = ['niveau', 'type_epreuve', 'matiere', 'annee_academique']
-    search_fields = ['titre', 'matiere', 'professeur', 'description']
+    search_fields = ['titre', 'matiere', 'description']
     ordering = ['-created_at']
     date_hierarchy = 'created_at'
     
@@ -42,7 +42,7 @@ class EpreuveAdmin(admin.ModelAdmin):
             'fields': ('titre', 'matiere', 'niveau', 'type_epreuve')
         }),
         ('Details', {
-            'fields': ('annee_academique', 'professeur', 'description', 'fichier_pdf')
+            'fields': ('annee_academique', 'description', 'fichier_pdf')
         }),
         ('Statistiques', {
             'fields': ('nb_vues', 'nb_telechargements', 'note_moyenne_difficulte', 'note_moyenne_pertinence'),

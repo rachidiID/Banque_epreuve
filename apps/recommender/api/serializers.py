@@ -13,7 +13,6 @@ class RecommendationSerializer(serializers.Serializer):
     niveau = serializers.CharField()
     type_epreuve = serializers.CharField()
     annee_academique = serializers.CharField()
-    professeur = serializers.CharField(allow_null=True)
     
     def to_representation(self, instance):
         """
@@ -29,7 +28,6 @@ class RecommendationSerializer(serializers.Serializer):
             'niveau': epreuve.niveau,
             'type_epreuve': epreuve.type_epreuve,
             'annee_academique': epreuve.annee_academique,
-            'professeur': epreuve.professeur,
             'nb_vues': epreuve.nb_vues,
             'nb_telechargements': epreuve.nb_telechargements,
             'note_moyenne_pertinence': epreuve.note_moyenne_pertinence,

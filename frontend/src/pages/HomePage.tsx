@@ -57,7 +57,7 @@ const HomePage = () => {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Rechercher une épreuve, matière, professeur..."
+                placeholder="Rechercher une épreuve, matière..."
                 className="w-full pl-5 pr-14 py-3.5 sm:py-4 rounded-2xl text-gray-800 bg-white/95 backdrop-blur-sm shadow-xl border-0 focus:ring-2 focus:ring-accent-400 focus:outline-none text-sm sm:text-base placeholder-gray-400"
               />
               <button

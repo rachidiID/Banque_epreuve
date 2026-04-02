@@ -64,10 +64,10 @@ class Command(BaseCommand):
         # Épreuves
         epreuves = list(Epreuve.objects.values(
             'id', 'titre', 'matiere', 'niveau', 'type_epreuve',
-            'annee_academique', 'professeur', 'description',
+            'annee_academique', 'description',
             'nb_vues', 'nb_telechargements',
             'note_moyenne_difficulte', 'note_moyenne_pertinence',
-            'is_approved', 'created_at'
+            'created_at'
         ))
         self._write_json(os.path.join(output_dir, 'epreuves.json'), epreuves)
         self.stdout.write(f"  → {len(epreuves)} épreuves")

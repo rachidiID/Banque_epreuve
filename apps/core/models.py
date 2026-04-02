@@ -89,7 +89,6 @@ class Epreuve(models.Model):
     niveau = models.CharField(max_length=2, choices=NIVEAU_CHOICES)
     type_epreuve = models.CharField(max_length=15, choices=TYPE_CHOICES)
     annee_academique = models.CharField(max_length=20, help_text="Ex: 2023-2024")
-    professeur = models.CharField(max_length=100, blank=True, null=True)
     
     # Fichier PDF (changement majeur : FileField au lieu de CharField)
     fichier_pdf = models.FileField(
@@ -122,8 +121,8 @@ class Epreuve(models.Model):
     
     # Modération et upload
     is_approved = models.BooleanField(
-        default=False,
-        help_text="Épreuve validée par un modérateur"
+        default=True,
+        help_text="Épreuve approuvée (toujours True)"
     )
     uploaded_by = models.ForeignKey(
         'User',

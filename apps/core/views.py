@@ -70,7 +70,7 @@ class EpreuveViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['niveau', 'matiere', 'type_epreuve', 'annee_academique']
-    search_fields = ['titre', 'description', 'professeur', 'matiere']
+    search_fields = ['titre', 'description', 'matiere']
     ordering_fields = ['created_at', 'nb_vues', 'nb_telechargements', 'note_moyenne_pertinence']
     ordering = ['-created_at']
     
@@ -87,22 +87,17 @@ class EpreuveViewSet(viewsets.ModelViewSet):
             return Epreuve.objects.none()
         
         user = self.request.user
+        niveau_order = ['P1', 'P2', 'L3', 'M1', 'M2']
         if user.is_staff:
-            # Admin voit TOUT (y compris non approuvées)
             queryset = Epreuve.objects.all()
         else:
-            # Utilisateurs normaux : uniquement épreuves approuvées + leurs propres uploads
-            niveau_order = ['P1', 'P2', 'L3', 'M1', 'M2']
             user_niveau = user.niveau
             if user_niveau and user_niveau in niveau_order:
                 idx = niveau_order.index(user_niveau)
                 allowed_niveaux = niveau_order[:idx + 1]
             else:
                 allowed_niveaux = niveau_order
-            queryset = Epreuve.objects.filter(
-                Q(is_approved=True, niveau__in=allowed_niveaux) |
-                Q(uploaded_by=user)
-            )
+            queryset = Epreuve.objects.filter(niveau__in=allowed_niveaux)
         
         return queryset
     
@@ -374,10 +369,9 @@ def upload_epreuve(request):
     )
     
     if serializer.is_valid():
-        # Admin → approuvé automatiquement, sinon → en attente de modération
         epreuve = serializer.save(
             uploaded_by=user,
-            is_approved=user.is_staff,
+            is_approved=True,
         )
         
         detail_serializer = EpreuveDetailSerializer(
@@ -385,15 +379,9 @@ def upload_epreuve(request):
             context={'request': request}
         )
         
-        message = (
-            'Épreuve uploadée et publiée avec succès !'
-            if user.is_staff
-            else 'Épreuve uploadée avec succès ! Elle sera visible après validation par un modérateur.'
-        )
-        
         return Response(
             {
-                'message': message,
+                'message': 'Épreuve uploadée et publiée avec succès !',
                 'epreuve': detail_serializer.data
             },
             status=status.HTTP_201_CREATED
@@ -544,11 +532,6 @@ def generate_sample_data(request):
         'STAT_PROB': ['Probabilites', 'Statistique descriptive', 'Statistique inferentielle', 'Processus stochastiques'],
         'MATH_FOND': ['Topologie', 'Analyse fonctionnelle', 'Theorie des nombres', 'Algebre abstraite'],
     }
-    professeurs = [
-        'Prof. ADJIBI', 'Prof. KOUTON', 'Prof. SOSSA', 'Prof. HOUNKONNOU',
-        'Prof. ATCHADE', 'Prof. AZONHIHO', 'Prof. DAKO', 'Prof. AKPLOGAN',
-        'Prof. VODOUNOU', 'Prof. DJOSSOU',
-    ]
     annees = ['2020-2021', '2021-2022', '2022-2023', '2023-2024', '2024-2025']
 
     # Créer les utilisateurs
@@ -585,9 +568,7 @@ def generate_sample_data(request):
             niveau=niveau,
             type_epreuve=type_epreuve,
             annee_academique=annee,
-            professeur=random.choice(professeurs),
-            description=f'Épreuve de {matiere} pour le niveau {niveau}, année {annee}. '
-                        f'Proposée par un professeur de la filière {filiere} à l\'IMSP.',
+            description=f'Épreuve de {matiere} pour le niveau {niveau}, année {annee}. Proposée à l\'IMSP.',
         )
         created_epreuves.append(ep)
 
@@ -761,11 +742,11 @@ def _export_json_response():
         )),
         'epreuves': list(Epreuve.objects.values(
             'id', 'titre', 'matiere', 'niveau', 'type_epreuve',
-            'annee_academique', 'professeur', 'description',
+            'annee_academique', 'description',
             'fichier_pdf', 'taille_fichier', 'nb_pages',
             'nb_vues', 'nb_telechargements',
             'note_moyenne_difficulte', 'note_moyenne_pertinence',
-            'is_approved', 'created_at', 'updated_at'
+            'created_at', 'updated_at'
         )),
         'interactions': list(Interaction.objects.values(
             'id', 'user_id', 'epreuve_id',
@@ -829,11 +810,11 @@ def _export_csv_response():
             write_csv(
                 'epreuves.csv',
                 ['id', 'titre', 'matiere', 'niveau', 'type_epreuve', 'annee_academique',
-                 'professeur', 'nb_vues', 'nb_telechargements',
+                 'nb_vues', 'nb_telechargements',
                  'note_moyenne_difficulte', 'note_moyenne_pertinence'],
                 Epreuve.objects.values_list(
                     'id', 'titre', 'matiere', 'niveau', 'type_epreuve', 'annee_academique',
-                    'professeur', 'nb_vues', 'nb_telechargements',
+                    'nb_vues', 'nb_telechargements',
                     'note_moyenne_difficulte', 'note_moyenne_pertinence'
                 ),
             )

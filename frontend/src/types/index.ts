@@ -21,14 +21,12 @@ export interface Epreuve {
   niveau: string
   type_epreuve: string
   annee_academique: string
-  professeur: string | null
   fichier_pdf: string | null
   taille_fichier?: number
   taille_fichier_mb?: number
   hash_fichier?: string
   nb_pages?: number
   texte_extrait?: string
-  is_approved?: boolean
   uploaded_by?: number
   uploaded_by_username?: string
   fichier_url?: string

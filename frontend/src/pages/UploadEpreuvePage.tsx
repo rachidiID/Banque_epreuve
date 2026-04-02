@@ -12,7 +12,6 @@ interface UploadFormData {
   niveau: string
   type_epreuve: string
   annee_academique: string
-  professeur?: string
   description?: string
 }
 
@@ -106,7 +105,6 @@ const UploadEpreuvePage = () => {
     formData.append('niveau', data.niveau)
     formData.append('type_epreuve', data.type_epreuve)
     formData.append('annee_academique', data.annee_academique)
-    if (data.professeur) formData.append('professeur', data.professeur)
     if (data.description) formData.append('description', data.description)
 
     uploadMutation.mutate(formData)
@@ -291,18 +289,6 @@ const UploadEpreuvePage = () => {
               </div>
             </div>
 
-            {/* Professeur */}
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Professeur <span className="text-gray-400">(optionnel)</span>
-              </label>
-              <input
-                {...register('professeur')}
-                className="input-field"
-                placeholder="Ex: Dr. ZINSOU"
-              />
-            </div>
-
             {/* Description */}
             <div>
               <label className="block text-sm font-medium mb-1">
@@ -322,7 +308,7 @@ const UploadEpreuvePage = () => {
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <h3 className="font-medium text-blue-900 mb-2">Note importante</h3>
           <p className="text-sm text-blue-800">
-            Votre épreuve sera soumise à modération avant d'être publiée. 
+            Votre épreuve sera publiée immédiatement après l'upload. 
             Assurez-vous que le contenu est approprié et que vous avez le droit de le partager.
           </p>
         </div>
