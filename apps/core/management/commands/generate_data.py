@@ -86,9 +86,6 @@ class Command(BaseCommand):
             'MATH_FOND': ['Topologie', 'Analyse fonctionnelle', 'Theorie des nombres', 'Algebre abstraite']
         }
         
-        professeurs = ['Prof. ADJIBI', 'Prof. KOUTON', 'Prof. SOSSA', 'Prof. HOUNKONNOU', 
-                       'Prof. ATCHADE', 'Prof. AZONHIHO', 'Prof. DAKO']
-        
         annees = ['2020-2021', '2021-2022', '2022-2023', '2023-2024', '2024-2025']
         
         epreuves = []
@@ -105,7 +102,6 @@ class Command(BaseCommand):
                 niveau=niveau,
                 type_epreuve=type_epreuve,
                 annee_academique=random.choice(annees),
-                professeur=random.choice(professeurs),
                 # Pas de fichier PDF pour les données synthétiques
                 # (évite les erreurs de storage sur Render)
                 description=f'Epreuve de {matiere} pour le niveau {niveau}. Annee {random.choice(annees)}.'

@@ -142,8 +142,6 @@ class LitePredictor:
                 score += 0.35
             if ep.niveau == source.niveau:
                 score += 0.15
-            if ep.professeur and source.professeur and ep.professeur == source.professeur:
-                score += 0.15
             if ep.type_epreuve == source.type_epreuve:
                 score += 0.1
             if ep.annee_academique == source.annee_academique:
@@ -179,31 +177,24 @@ class LitePredictor:
         )
 
         matiere_scores = defaultdict(float)
-        prof_scores = defaultdict(float)
         type_scores = defaultdict(float)
 
         for inter in interactions:
             ep = inter.epreuve
             w = INTERACTION_WEIGHTS.get(inter.action_type, 1.0)
             matiere_scores[ep.matiere] += w
-            if ep.professeur:
-                prof_scores[ep.professeur] += w
             type_scores[ep.type_epreuve] += w
 
         if not matiere_scores:
             return self._cold_start_content(user, queryset, limit)
 
         top_matieres = sorted(matiere_scores, key=matiere_scores.get, reverse=True)[:5]
-        top_profs = sorted(prof_scores, key=prof_scores.get, reverse=True)[:3] if prof_scores else []
         top_types = sorted(type_scores, key=type_scores.get, reverse=True)[:2] if type_scores else []
 
         # Score max pour normaliser
         max_m = matiere_scores[top_matieres[0]] if top_matieres else 1
-        max_p = prof_scores[top_profs[0]] if top_profs else 1
 
         q_filter = Q(matiere__in=top_matieres)
-        if top_profs:
-            q_filter |= Q(professeur__in=top_profs)
 
         recs = queryset.filter(q_filter).order_by('-nb_telechargements', '-note_moyenne_pertinence')[:limit]
 
@@ -211,9 +202,7 @@ class LitePredictor:
         for ep in recs:
             score = 0.0
             if ep.matiere in matiere_scores:
-                score += (matiere_scores[ep.matiere] / max_m) * 0.5
-            if ep.professeur in prof_scores:
-                score += (prof_scores[ep.professeur] / max_p) * 0.2
+                score += (matiere_scores[ep.matiere] / max_m) * 0.7
             if ep.type_epreuve in top_types:
                 score += 0.1
             if ep.note_moyenne_pertinence:
