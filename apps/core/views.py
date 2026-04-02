@@ -272,10 +272,24 @@ class CommentaireViewSet(viewsets.ModelViewSet):
                 epreuve_id = int(epreuve_id)
                 queryset = queryset.filter(epreuve_id=epreuve_id)
             except (ValueError, TypeError):
-                # Si l'ID est invalide, retourner un queryset vide
                 return Commentaire.objects.none()
         
         return queryset
+    
+    def perform_create(self, serializer):
+        """Enregistre aussi une Interaction COMMENT pour le modèle de recommandation."""
+        commentaire = serializer.save()
+        Interaction.objects.create(
+            user=self.request.user,
+            epreuve=commentaire.epreuve,
+            action_type='COMMENT',
+            metadata={
+                'commentaire_id': commentaire.id,
+                'note_utilite': commentaire.note_utilite,
+                'recommande': commentaire.recommande,
+                'niveau_difficulte_ressenti': commentaire.niveau_difficulte_ressenti,
+            }
+        )
     
     def perform_destroy(self, instance):
         if instance.user != self.request.user and not self.request.user.is_staff:
@@ -292,25 +306,12 @@ class CommentaireViewSet(viewsets.ModelViewSet):
 def upload_epreuve(request):
     """
     Endpoint pour uploader une nouvelle épreuve avec fichier PDF.
-    - Limite : 5 uploads par jour par utilisateur
     - Vérifie les magic bytes PDF
     - Détecte les doublons par hash SHA-256
     - Détecte les doublons par titre similaire (même matière + niveau + année)
     - Les épreuves ne sont PAS approuvées automatiquement (sauf si admin)
     """
     user = request.user
-
-    # ── Limite de fréquence : 5 uploads / jour ──
-    today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    uploads_today = Epreuve.objects.filter(
-        uploaded_by=user,
-        created_at__gte=today_start,
-    ).count()
-    if uploads_today >= 5 and not user.is_staff:
-        return Response(
-            {'error': 'Vous avez atteint la limite de 5 uploads par jour. Réessayez demain.'},
-            status=status.HTTP_429_TOO_MANY_REQUESTS,
-        )
 
     # ── Vérification magic bytes PDF ──
     fichier = request.FILES.get('fichier_pdf')

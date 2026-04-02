@@ -116,6 +116,8 @@ class NCFDataLoader:
             'CLICK': 2.0,
             'DOWNLOAD': 3.0,
             'RATE': 4.0,
+            'COMMENT': 5.0,
+            'BOOKMARK': 3.5,
         }
         return rating_map.get(action_type, 1.0)
     

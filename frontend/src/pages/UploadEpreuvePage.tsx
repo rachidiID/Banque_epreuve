@@ -170,6 +170,7 @@ const UploadEpreuvePage = () => {
                   type="button"
                   onClick={() => setPdfFile(null)}
                   className="text-red-500 hover:text-red-700 transition-colors"
+                  title="Supprimer le fichier"
                 >
                   <FaTimes className="text-xl" />
                 </button>

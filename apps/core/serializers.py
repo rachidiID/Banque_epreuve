@@ -266,14 +266,15 @@ class CommentaireSerializer(serializers.ModelSerializer):
     class Meta:
         model = Commentaire
         fields = ['id', 'user', 'user_username', 'epreuve', 'epreuve_titre',
-                  'contenu', 'created_at', 'updated_at']
+                  'contenu', 'note_utilite', 'recommande', 'niveau_difficulte_ressenti',
+                  'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
 
 
 class CommentaireCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Commentaire
-        fields = ['epreuve', 'contenu']
+        fields = ['epreuve', 'contenu', 'note_utilite', 'recommande', 'niveau_difficulte_ressenti']
     
     def create(self, validated_data):
         validated_data['user'] = self.context['request'].user

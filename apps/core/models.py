@@ -196,6 +196,8 @@ class Interaction(models.Model):
         ('DOWNLOAD', 'Telechargement'),
         ('CLICK', 'Clic'),
         ('RATE', 'Evaluation'),
+        ('COMMENT', 'Commentaire'),
+        ('BOOKMARK', 'Favori'),
     ]
     
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='interactions')
@@ -270,6 +272,26 @@ class Commentaire(models.Model):
     epreuve = models.ForeignKey(Epreuve, on_delete=models.CASCADE, related_name='commentaires')
     
     contenu = models.TextField()
+    
+    # ── Champs enrichis pour l'entraînement du modèle de recommandation ──
+    note_utilite = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+        null=True,
+        blank=True,
+        help_text="À quel point cette épreuve vous a été utile (1=pas utile, 5=très utile)"
+    )
+    recommande = models.BooleanField(
+        null=True,
+        blank=True,
+        help_text="Recommanderiez-vous cette épreuve à d'autres étudiants ?"
+    )
+    niveau_difficulte_ressenti = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+        null=True,
+        blank=True,
+        help_text="Difficulté ressentie (1=très facile, 5=très difficile)"
+    )
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -277,6 +299,10 @@ class Commentaire(models.Model):
         verbose_name = 'Commentaire'
         verbose_name_plural = 'Commentaires'
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['epreuve', '-created_at']),
+            models.Index(fields=['user', '-created_at']),
+        ]
     
     def __str__(self):
         return f"{self.user.username} - {self.epreuve.titre[:30]} - {self.created_at.strftime('%Y-%m-%d')}"

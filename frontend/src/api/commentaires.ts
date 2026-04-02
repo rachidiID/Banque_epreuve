@@ -22,7 +22,13 @@ export const commentairesAPI = {
     }
   },
 
-  createCommentaire: async (epreuveId: number, data: { contenu: string; parent?: number }): Promise<Commentaire> => {
+  createCommentaire: async (epreuveId: number, data: {
+    contenu: string;
+    parent?: number;
+    note_utilite?: number;
+    recommande?: boolean;
+    niveau_difficulte_ressenti?: number;
+  }): Promise<Commentaire> => {
     const response = await apiClient.post<Commentaire>(`/commentaires/`, {
       ...data,
       epreuve: epreuveId

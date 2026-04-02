@@ -46,9 +46,14 @@ export interface Commentaire {
   id: number
   epreuve: number
   user: User
+  user_username?: string
   contenu: string
+  note_utilite?: number | null
+  recommande?: boolean | null
+  niveau_difficulte_ressenti?: number | null
   parent: number | null
   created_at: string
+  updated_at?: string
   replies?: Commentaire[]
 }
 

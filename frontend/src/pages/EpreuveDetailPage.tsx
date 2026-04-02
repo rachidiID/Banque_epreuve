@@ -17,6 +17,9 @@ const EpreuveDetailPage = () => {
   const { user } = useAuth()
   const queryClient = useQueryClient()
   const [commentText, setCommentText] = useState('')
+  const [commentNoteUtilite, setCommentNoteUtilite] = useState<number>(0)
+  const [commentRecommande, setCommentRecommande] = useState<boolean | null>(null)
+  const [commentDifficulte, setCommentDifficulte] = useState<number>(0)
   const [showPDFViewer, setShowPDFViewer] = useState(true)
   const [rating, setRating] = useState({
     note_difficulte: 3,
@@ -52,11 +55,14 @@ const EpreuveDetailPage = () => {
   })
 
   const addCommentMutation = useMutation({
-    mutationFn: (contenu: string) =>
-      commentairesAPI.createCommentaire(epreuveId!, { contenu }),
+    mutationFn: (data: { contenu: string; note_utilite?: number; recommande?: boolean; niveau_difficulte_ressenti?: number }) =>
+      commentairesAPI.createCommentaire(epreuveId!, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['commentaires', epreuveId] })
       setCommentText('')
+      setCommentNoteUtilite(0)
+      setCommentRecommande(null)
+      setCommentDifficulte(0)
       toast.success('Commentaire ajouté')
     },
   })
@@ -208,19 +214,105 @@ const EpreuveDetailPage = () => {
           Commentaires ({commentaires?.length || 0})
         </h2>
 
-        <div className="mb-6">
+        <div className="mb-6 space-y-4">
           <textarea
             value={commentText}
             onChange={(e) => setCommentText(e.target.value)}
-            placeholder="Ajouter un commentaire..."
+            placeholder="Partagez votre avis sur cette épreuve..."
             className="input-field min-h-[100px]"
           />
+
+          {/* Champs enrichis pour le modèle de recommandation */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+                Utilité de l'épreuve
+              </label>
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setCommentNoteUtilite(n === commentNoteUtilite ? 0 : n)}
+                    className={`w-9 h-9 rounded-lg text-sm font-bold transition-all ${
+                      n <= commentNoteUtilite
+                        ? 'bg-amber-500 text-white shadow-md'
+                        : 'bg-gray-200 dark:bg-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-300'
+                    }`}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+              <span className="text-xs text-gray-400 mt-1 block">1=pas utile, 5=très utile</span>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+                Difficulté ressentie
+              </label>
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setCommentDifficulte(n === commentDifficulte ? 0 : n)}
+                    className={`w-9 h-9 rounded-lg text-sm font-bold transition-all ${
+                      n <= commentDifficulte
+                        ? 'bg-purple-500 text-white shadow-md'
+                        : 'bg-gray-200 dark:bg-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-300'
+                    }`}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+              <span className="text-xs text-gray-400 mt-1 block">1=facile, 5=très difficile</span>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+                Recommander ?
+              </label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCommentRecommande(commentRecommande === true ? null : true)}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                    commentRecommande === true
+                      ? 'bg-green-500 text-white shadow-md'
+                      : 'bg-gray-200 dark:bg-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-300'
+                  }`}
+                >
+                  👍 Oui
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCommentRecommande(commentRecommande === false ? null : false)}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                    commentRecommande === false
+                      ? 'bg-red-500 text-white shadow-md'
+                      : 'bg-gray-200 dark:bg-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-300'
+                  }`}
+                >
+                  👎 Non
+                </button>
+              </div>
+            </div>
+          </div>
+
           <button
-            onClick={() => addCommentMutation.mutate(commentText)}
+            onClick={() => {
+              const data: any = { contenu: commentText }
+              if (commentNoteUtilite > 0) data.note_utilite = commentNoteUtilite
+              if (commentRecommande !== null) data.recommande = commentRecommande
+              if (commentDifficulte > 0) data.niveau_difficulte_ressenti = commentDifficulte
+              addCommentMutation.mutate(data)
+            }}
             disabled={!commentText.trim()}
-            className="btn-primary mt-2 disabled:opacity-50"
+            className="btn-primary disabled:opacity-50"
           >
-            Publier
+            Publier le commentaire
           </button>
         </div>
 
@@ -228,12 +320,34 @@ const EpreuveDetailPage = () => {
           {commentaires && Array.isArray(commentaires) && commentaires.map((comment) => (
             <div key={comment.id} className="border-l-2 border-primary-200 pl-4">
               <div className="flex items-center space-x-2 mb-1">
-                <span className="font-semibold">{comment.user.username}</span>
+                <span className="font-semibold">{comment.user_username || comment.user?.username}</span>
                 <span className="text-sm text-gray-500">
                   {format(new Date(comment.created_at), 'PPp', { locale: fr })}
                 </span>
               </div>
-              <p className="text-gray-700">{comment.contenu}</p>
+              <p className="text-gray-700 dark:text-gray-300">{comment.contenu}</p>
+              {/* Afficher les notes si présentes */}
+              <div className="flex flex-wrap gap-2 mt-1">
+                {comment.note_utilite && (
+                  <span className="text-xs px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-full">
+                    Utilité: {comment.note_utilite}/5
+                  </span>
+                )}
+                {comment.niveau_difficulte_ressenti && (
+                  <span className="text-xs px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full">
+                    Difficulté: {comment.niveau_difficulte_ressenti}/5
+                  </span>
+                )}
+                {comment.recommande !== null && comment.recommande !== undefined && (
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${
+                    comment.recommande
+                      ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+                      : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+                  }`}>
+                    {comment.recommande ? '👍 Recommandé' : '👎 Non recommandé'}
+                  </span>
+                )}
+              </div>
             </div>
           ))}
         </div>
