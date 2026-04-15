@@ -754,10 +754,12 @@ def _export_json_response():
         )),
         'evaluations': list(Evaluation.objects.values(
             'id', 'user_id', 'epreuve_id',
-            'note_difficulte', 'note_pertinence', 'created_at'
+            'note_difficulte', 'note_pertinence', 'created_at', 'updated_at'
         )),
         'commentaires': list(Commentaire.objects.values(
-            'id', 'user_id', 'epreuve_id', 'contenu', 'created_at'
+            'id', 'user_id', 'epreuve_id', 'contenu',
+            'note_utilite', 'recommande', 'niveau_difficulte_ressenti',
+            'created_at', 'updated_at'
         )),
     }
 
@@ -772,65 +774,81 @@ def _export_json_response():
 def _export_csv_response():
     """Exporte les données en CSV dans un ZIP."""
     import zipfile
+    import traceback
 
     User = get_user_model()
 
     try:
         buffer = io.BytesIO()
         with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
-            # --- Helper pour écrire un CSV proprement ---
-            def write_csv(filename, headers, queryset):
+
+            def write_csv(filename, headers, rows):
+                """Écrit un CSV UTF-8 avec BOM dans le ZIP."""
                 output = io.StringIO()
-                writer = csv.writer(output)
+                writer = csv.writer(output, quoting=csv.QUOTE_MINIMAL)
                 writer.writerow(headers)
-                for row in queryset:
-                    # Convertir chaque valeur en str pour éviter les erreurs de sérialisation
+                for row in rows:
                     writer.writerow([str(v) if v is not None else '' for v in row])
-                zf.writestr(filename, output.getvalue())
+                # BOM UTF-8 pour compatibilité Excel
+                zf.writestr(filename, '\ufeff' + output.getvalue())
 
             # Interactions CSV
             write_csv(
                 'interactions.csv',
-                ['user_id', 'epreuve_id', 'action_type', 'session_duration', 'timestamp'],
+                ['id', 'user_id', 'epreuve_id', 'action_type', 'session_duration', 'timestamp'],
                 Interaction.objects.values_list(
-                    'user_id', 'epreuve_id', 'action_type', 'session_duration', 'timestamp'
-                ),
+                    'id', 'user_id', 'epreuve_id', 'action_type', 'session_duration', 'timestamp'
+                ).order_by('id'),
             )
 
             # Évaluations CSV
             write_csv(
                 'evaluations.csv',
-                ['user_id', 'epreuve_id', 'note_difficulte', 'note_pertinence', 'created_at'],
+                ['id', 'user_id', 'epreuve_id', 'note_difficulte', 'note_pertinence',
+                 'created_at', 'updated_at'],
                 Evaluation.objects.values_list(
-                    'user_id', 'epreuve_id', 'note_difficulte', 'note_pertinence', 'created_at'
-                ),
+                    'id', 'user_id', 'epreuve_id', 'note_difficulte', 'note_pertinence',
+                    'created_at', 'updated_at'
+                ).order_by('id'),
             )
 
             # Épreuves CSV
             write_csv(
                 'epreuves.csv',
                 ['id', 'titre', 'matiere', 'niveau', 'type_epreuve', 'annee_academique',
-                 'nb_vues', 'nb_telechargements',
-                 'note_moyenne_difficulte', 'note_moyenne_pertinence'],
+                 'description', 'nb_vues', 'nb_telechargements',
+                 'note_moyenne_difficulte', 'note_moyenne_pertinence',
+                 'created_at', 'updated_at'],
                 Epreuve.objects.values_list(
                     'id', 'titre', 'matiere', 'niveau', 'type_epreuve', 'annee_academique',
-                    'nb_vues', 'nb_telechargements',
-                    'note_moyenne_difficulte', 'note_moyenne_pertinence'
-                ),
+                    'description', 'nb_vues', 'nb_telechargements',
+                    'note_moyenne_difficulte', 'note_moyenne_pertinence',
+                    'created_at', 'updated_at'
+                ).order_by('id'),
             )
 
             # Utilisateurs CSV
             write_csv(
                 'utilisateurs.csv',
-                ['id', 'username', 'niveau', 'filiere', 'date_joined'],
-                User.objects.values_list('id', 'username', 'niveau', 'filiere', 'date_joined'),
+                ['id', 'username', 'email', 'first_name', 'last_name',
+                 'niveau', 'filiere', 'is_staff', 'is_active', 'date_joined'],
+                User.objects.values_list(
+                    'id', 'username', 'email', 'first_name', 'last_name',
+                    'niveau', 'filiere', 'is_staff', 'is_active', 'date_joined'
+                ).order_by('id'),
             )
 
-            # Commentaires CSV
+            # Commentaires CSV (inclut tous les champs ML)
             write_csv(
                 'commentaires.csv',
-                ['user_id', 'epreuve_id', 'contenu', 'created_at'],
-                Commentaire.objects.values_list('user_id', 'epreuve_id', 'contenu', 'created_at'),
+                ['id', 'user_id', 'epreuve_id', 'contenu',
+                 'note_utilite', 'recommande', 'niveau_difficulte_ressenti',
+                 'created_at', 'updated_at'],
+                Commentaire.objects.values_list(
+                    'id', 'user_id', 'epreuve_id', 'contenu',
+                    'note_utilite', 'recommande', 'niveau_difficulte_ressenti',
+                    'created_at', 'updated_at'
+                ).order_by('id'),
             )
 
         buffer.seek(0)
@@ -839,8 +857,11 @@ def _export_csv_response():
         return response
 
     except Exception as e:
+        error_detail = traceback.format_exc()
+        import logging
+        logging.getLogger(__name__).error(f"CSV export failed: {error_detail}")
         return HttpResponse(
-            json.dumps({'error': f'Erreur lors de la génération CSV : {str(e)}'}),
+            json.dumps({'error': f'Erreur lors de la génération CSV : {str(e)}', 'detail': error_detail}),
             content_type='application/json',
             status=500,
         )
