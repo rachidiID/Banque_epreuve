@@ -5,7 +5,10 @@ set -o errexit
 # Forcer les settings Render
 export DJANGO_SETTINGS_MODULE=config.settings.render
 
-echo "==> Installation des dépendances..."
+echo "==> Build du frontend React..."
+cd frontend && npm ci && npm run build && cd ..
+
+echo "==> Installation des dépendances Python..."
 pip install --upgrade pip
 pip install -r requirements/render.txt
 

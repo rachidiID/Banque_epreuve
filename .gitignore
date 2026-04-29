@@ -28,6 +28,21 @@ staticfiles/
 *.swo
 *~
 
+# Node
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+node_modules/
+
+# ML models (trop lourds pour Git)
+ml_models/*.pth
+ml_models/*.json
+
+# Data
+data/processed/
+data/raw/
+data/synthetic/
+
 # OS
 .DS_Store
 Thumbs.db

@@ -6,7 +6,7 @@ from django.contrib import admin
 from django.urls import path, include, re_path
 from django.conf import settings
 from django.conf.urls.static import static
-from django.views.generic import TemplateView
+from django.views.generic import TemplateView, RedirectView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
@@ -35,10 +35,14 @@ if settings.DEBUG:
 # Servir les fichiers media en production aussi (pour les PDFs uploadés)
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
-# Frontend React : toutes les routes non-API servent index.html
-# React Router gère le routing côté client
+# Frontend React SPA :
+# - Racine "/" → redirect vers "/static/frontend/" (base Vite en prod)
+# - "/static/frontend/*" → servir index.html (WhiteNoise gère les vrais assets avant d'atteindre ici)
 urlpatterns += [
-    re_path(r'^(?!admin|api|static|media).*$',
-            TemplateView.as_view(template_name='index.html'),
-            name='frontend'),
+    path('', RedirectView.as_view(url='/static/frontend/', permanent=False), name='root'),
+    re_path(
+        r'^static/frontend/(?!assets/).*$',
+        TemplateView.as_view(template_name='index.html'),
+        name='frontend',
+    ),
 ]

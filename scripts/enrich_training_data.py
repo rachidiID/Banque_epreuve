@@ -19,7 +19,7 @@ from datetime import datetime, timedelta, timezone
 random.seed(42)
 
 BASE_DIR = "ml_models"
-INPUT_FILE = f"{BASE_DIR}/banque_epreuves_export(1).json"
+INPUT_FILE = f"{BASE_DIR}/banque_epreuves_export_new.json"
 OUTPUT_FILE = f"{BASE_DIR}/banque_epreuves_enrichi.json"
 
 
@@ -87,6 +87,12 @@ MATIERE_STANDARDIZATION = {
     "Mathématiques ue": "Mathématiques",
     "Processus stochastiques": "Mathématiques",
     "OM": "Mathématiques",
+    # Nouvelles épreuves avec variantes de matières
+    "Analyse2": "Mathématiques",
+    "Analyse 2": "Mathématiques",
+    "Méthodes numériques": "Mathématiques",
+    "Methodes numériques": "Mathématiques",
+    "Methodes numeriques": "Mathématiques",
     # Sous-domaines Physique
     "Physique théorie et application": "Physique",
     "Thermodynamique": "Physique",
@@ -215,7 +221,17 @@ def generate_note(base_range: tuple, bonus: float = 0.0) -> float:
     high = min(max(base_range[1] + bonus, 1.0), 5.0)
     if low > high:
         low, high = high, low
-    raw = random.uniform(low, high) + random.uniform(-0.25, 0.25)
+    # Distribution bimodale : évite la concentration excessive autour de 3/5
+    # 70 % distribution normale, 30 % valeurs extrêmes (1-2 ou 4-5)
+    if random.random() < 0.30:
+        # Valeur extrême
+        if random.random() < 0.5:
+            raw = random.uniform(max(low, 1.0), min(low + 1.5, high))
+        else:
+            raw = random.uniform(max(high - 1.5, low), min(high, 5.0))
+    else:
+        raw = random.gauss((low + high) / 2, (high - low) / 4)
+        raw += random.uniform(-0.15, 0.15)
     return round_to_half(raw)
 
 
@@ -243,11 +259,69 @@ def enrich_data():
 
     # Index utiles
     ep_by_id = {e["id"]: e for e in epreuves}
-    synth_user_ids = [u["id"] for u in utilisateurs if u["id"] < 32]
+    # IDs 1-31 = utilisateurs synthétiques créés lors de la génération initiale
+    synth_user_ids = [u["id"] for u in utilisateurs if u["id"] <= 31]
 
     next_eval_id = max((e["id"] for e in evaluations), default=0) + 1
     next_comment_id = max((c["id"] for c in commentaires), default=0) + 1
     next_inter_id = max((i["id"] for i in interactions), default=0) + 1
+
+    # ----------------------------------------------------------------
+    # STEP 0 – Compléter les profils des utilisateurs réels manquants
+    # ----------------------------------------------------------------
+    # Inférer la filière depuis les interactions (matière la plus consultée)
+    MATIERE_TO_FILIERE = {
+        "Mathématiques": "MATH",
+        "Physique": "PHYSIQUE",
+        "Informatique": "INFO",
+        "Chimie": "CHIMIE",
+        "Science industrielle de l'ingénieur": "PHYSIQUE",
+        "Anglais Scientifique": "MATH",
+        "Français": "MATH",
+        "Sciences de l'éducation": "MATH",
+    }
+    FILIERES = ["MATH", "INFO", "PHYSIQUE", "CHIMIE", "RO", "STAT_PROB", "MATH_FOND"]
+    NIVEAUX = ["P1", "P2", "L3", "M1", "M2"]
+
+    # Construire un index interactions par user
+    user_epreuve_actions: dict = {}
+    for inter in interactions:
+        uid = inter["user_id"]
+        eid = inter["epreuve_id"]
+        user_epreuve_actions.setdefault(uid, []).append(eid)
+
+    profile_fixed = 0
+    for u in utilisateurs:
+        if u["id"] <= 31:
+            continue  # synthétiques déjà complets
+        needs_filiere = not u.get("filiere")
+        needs_niveau = not u.get("niveau")
+
+        if needs_filiere:
+            # Chercher la matière la plus interagie
+            ep_ids = user_epreuve_actions.get(u["id"], [])
+            if ep_ids:
+                from collections import Counter as _Counter
+                matiere_counter = _Counter(
+                    ep_by_id[eid]["matiere"]
+                    for eid in ep_ids
+                    if eid in ep_by_id
+                )
+                top_matiere = matiere_counter.most_common(1)[0][0] if matiere_counter else None
+                u["filiere"] = MATIERE_TO_FILIERE.get(top_matiere, random.choice(FILIERES))
+            else:
+                u["filiere"] = random.choice(FILIERES)
+            profile_fixed += 1
+
+        if needs_niveau:
+            # Assigner un niveau aléatoire (distribution réaliste IMSP)
+            u["niveau"] = random.choices(
+                NIVEAUX,
+                weights=[20, 20, 25, 20, 15],
+                k=1,
+            )[0]
+
+    print(f"  [0] Profils utilisateurs complétés       : {profile_fixed}")
 
     # ----------------------------------------------------------------
     # STEP 1 – Corriger les matières erronées

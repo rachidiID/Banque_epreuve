@@ -23,13 +23,50 @@ INTERACTION_WEIGHTS = {
 }
 
 # ── Poids des stratégies dans la fusion finale ──
+# Calibrés pour ~200 épreuves / ~50 users (faible densité) :
+# - content renforcé (signal fiable même avec peu de données)
+# - collaborative réduit (trop bruité avec peu d'users)
+# - popularity augmenté (signal stable, utile en cold-start)
 STRATEGY_WEIGHTS = {
-    'content': 0.30,
-    'collaborative': 0.25,
-    'evaluation': 0.25,   # nouveau : évaluations explicites
-    'popularity': 0.10,
-    'profile': 0.10,      # nouveau : correspondance profil
+    'content': 0.40,
+    'collaborative': 0.15,
+    'evaluation': 0.20,
+    'popularity': 0.15,
+    'profile': 0.10,
 }
+
+# ── Normalisation des noms de matières (variantes → catégorie principale) ──
+MATIERE_ALIASES = {
+    'SII': "Science industrielle de l'ingénieur",
+    'SSI': "Science industrielle de l'ingénieur",
+    'Algebre': 'Mathématiques',
+    'Algèbre': 'Mathématiques',
+    'Algebre abstraite': 'Mathématiques',
+    'Probabilites': 'Mathématiques',
+    'Analyse': 'Mathématiques',
+    'Analyse2': 'Mathématiques',
+    'Analyse fonctionnelle': 'Mathématiques',
+    'Geometrie': 'Mathématiques',
+    'Theorie des nombres': 'Mathématiques',
+    'Topologie': 'Mathématiques',
+    'Statistique descriptive': 'Mathématiques',
+    'Méthodes numériques': 'Mathématiques',
+    'Processus stochastiques': 'Mathématiques',
+    'OM': 'Mathématiques',
+    'Reseaux': 'Informatique',
+    'Réseau': 'Informatique',
+    'Bases de donnees': 'Informatique',
+    'Programmation': 'Informatique',
+    'Thermodynamique': 'Physique',
+    'Chimie minerale': 'Chimie',
+    'Chimie analytique': 'Chimie',
+    'Anglais': 'Anglais Scientifique',
+}
+
+
+def normalize_matiere(matiere: str) -> str:
+    """Retourne la catégorie principale d'une matière."""
+    return MATIERE_ALIASES.get(matiere, matiere)
 
 
 class LitePredictor:
@@ -340,10 +377,11 @@ class LitePredictor:
         """Épreuves bien notées globalement + commentaires positifs."""
         from apps.core.models import Evaluation, Commentaire
 
-        # Épreuves avec les meilleures évaluations (pertinence >= 4) ET un minimum de reviews
+        # Seuil abaissé à 2.5 (au lieu de 3.5) pour couvrir plus d'épreuves
+        # avec peu de données (85/200 vs ~14/200 avec le seuil initial)
         well_rated = (
             queryset
-            .filter(note_moyenne_pertinence__gte=3.5)
+            .filter(note_moyenne_pertinence__gte=2.5)
             .annotate(nb_evals=Count('evaluations'))
             .filter(nb_evals__gte=1)
             .order_by('-note_moyenne_pertinence', '-nb_evals')[:limit]

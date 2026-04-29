@@ -2,6 +2,8 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
+const isProd = process.env.NODE_ENV === 'production'
+
 export default defineConfig({
   plugins: [react()],
   resolve: {
@@ -19,7 +21,9 @@ export default defineConfig({
       },
     },
   },
-  base: '/static/frontend/',
+  // En dev : base '/' → app à localhost:5173/ (routes normales)
+  // En prod : base '/static/frontend/' → assets référencés comme /static/frontend/assets/...
+  base: isProd ? '/static/frontend/' : '/',
   build: {
     outDir: '../static/frontend',
     emptyOutDir: true,

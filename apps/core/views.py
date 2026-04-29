@@ -67,7 +67,6 @@ class UserViewSet(viewsets.ModelViewSet):
 
 
 class EpreuveViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['niveau', 'matiere', 'type_epreuve', 'annee_academique']
     search_fields = ['titre', 'description', 'matiere']
@@ -81,13 +80,24 @@ class EpreuveViewSet(viewsets.ModelViewSet):
             return EpreuveCreateUpdateSerializer
         return EpreuveDetailSerializer
     
+    def get_permissions(self):
+        """List et retrieve sont publics, le reste nécessite auth."""
+        if self.action in ['list', 'retrieve']:
+            return [AllowAny()]
+        return [IsAuthenticated()]
+
     def get_queryset(self):
         # Handle Swagger schema generation
         if getattr(self, 'swagger_fake_view', False):
             return Epreuve.objects.none()
-        
-        user = self.request.user
+
         niveau_order = ['P1', 'P2', 'L3', 'M1', 'M2']
+        user = self.request.user
+
+        if not user.is_authenticated:
+            # Visiteurs anonymes : toutes les épreuves visibles
+            return Epreuve.objects.all()
+
         if user.is_staff:
             queryset = Epreuve.objects.all()
         else:
@@ -709,17 +719,14 @@ def dashboard_stats(request):
 # Export des données (admin seulement)
 # ────────────────────────────────────────────────────────
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminUser])
 def export_data_api(request):
     """
     GET /api/admin/export-data/?format=json|csv
     Exporte toutes les données de la BDD pour récupération locale
     et entraînement du modèle ML. Admin seulement.
     """
-    if not request.user.is_staff:
-        return Response({'error': 'Accès réservé aux administrateurs'}, status=status.HTTP_403_FORBIDDEN)
-
-    fmt = request.query_params.get('format', 'json')
+    fmt = request.query_params.get('export_format', request.query_params.get('format', 'json'))
 
     if fmt == 'csv':
         return _export_csv_response()

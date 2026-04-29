@@ -29,7 +29,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AuthProvider>
-          <Router>
+          <Router basename={import.meta.env.BASE_URL}>
             <Layout>
             <Routes>
               <Route path="/test" element={<TestPage />} />

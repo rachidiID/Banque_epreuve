@@ -4,6 +4,14 @@ import { Link } from 'react-router-dom'
 import { epreuvesAPI } from '@/api/epreuves'
 import { FaSearch, FaFilter } from 'react-icons/fa'
 
+/** Retourne true si la date est dans les 7 derniers jours */
+const isNew = (dateStr: string) => {
+  const created = new Date(dateStr)
+  const now = new Date()
+  const diffDays = (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24)
+  return diffDays <= 7
+}
+
 const EpreuvesListPage = () => {
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
@@ -120,9 +128,15 @@ const EpreuvesListPage = () => {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {epreuvesData?.results.map((epreuve) => (
-              <div key={epreuve.id} className="card hover:shadow-lg transition-shadow">
+              <div key={epreuve.id} className="card hover:shadow-lg transition-shadow relative">
+                {/* Badge Nouveau */}
+                {isNew(epreuve.created_at) && (
+                  <span className="absolute top-3 right-3 bg-green-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                    Nouveau
+                  </span>
+                )}
                 <Link to={`/epreuves/${epreuve.id}`}>
-                  <h3 className="font-bold text-lg mb-2 hover:text-primary-600">
+                  <h3 className="font-bold text-lg mb-2 hover:text-primary-600 pr-16">
                     {epreuve.titre}
                   </h3>
                 </Link>
