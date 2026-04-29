@@ -2,11 +2,21 @@
 # Script de build pour Render.com
 set -o errexit
 
+# Sauvegarder le répertoire racine
+ROOT_DIR="$(pwd)"
+
 # Forcer les settings Render
 export DJANGO_SETTINGS_MODULE=config.settings.render
 
 echo "==> Build du frontend React..."
-cd frontend && npm ci && npm run build && cd ..
+pushd frontend
+npm ci
+npm run build
+popd
+
+echo "==> Installation des dépendances Python..."
+pip install --upgrade pip
+pip install -r "$ROOT_DIR/requirements/render.txt"
 
 echo "==> Installation des dépendances Python..."
 pip install --upgrade pip
